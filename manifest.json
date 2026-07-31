@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "基于莫兰迪美学的沉浸式小剧场生成与共读插件。支持自定义提示词、记忆融合、角色探讨与共同续写。",
   "author": "Roche Creator",
-  "entry": "https://raw.githubusercontent.com/你的用户名/roche-plugin-little-theater/main/plugin.js",
+  "entry": "https://raw.githubusercontent.com/wangchenlu008-lab/reading/main/manifest.json",
   "hash": "",
   "permissions": [
     "persona:read",
