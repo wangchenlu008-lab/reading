@@ -1,9 +1,7 @@
 window.RochePlugin.register({
   id: "roche-plugin-little-theater",
   name: "小剧场 Pro Max",
-  version: "1.4.0",
-  description: "基于莫兰迪美学的沉浸式小剧场生成与共读插件。新增：专属世界书、精细化记忆写入、仿微信长按引用/撤回/重Roll功能。",
-  author: "Roche Creator",
+  version: "1.3.0",
   apps: [
     {
       id: "little-theater-app",
@@ -18,9 +16,16 @@ window.RochePlugin.register({
           style.id = styleId;
           style.textContent = `
             :root {
-              --lt-bg: #f5f7fa; --lt-panel: #fff; --lt-text-main: #4a5560; --lt-text-sub: #8a9ea8;
-              --lt-primary: #b1c2d4; --lt-primary-hover: #9db2c7; --lt-input-bg: #eef2f6;
-              --lt-border: #eef2f6; --lt-user-msg: #d0dce8; --lt-char-msg: #fff;
+              --lt-bg: #f5f7fa;
+              --lt-panel: #fff;
+              --lt-text-main: #4a5560;
+              --lt-text-sub: #8a9ea8;
+              --lt-primary: #b1c2d4;
+              --lt-primary-hover: #9db2c7;
+              --lt-input-bg: #eef2f6;
+              --lt-border: #eef2f6;
+              --lt-user-msg: #d0dce8;
+              --lt-char-msg: #fff;
             }
             .theme-pink { --lt-bg: #fff0f5; --lt-panel: #fff; --lt-text-main: #5c434a; --lt-text-sub: #b5929c; --lt-primary: #f4b8c8; --lt-primary-hover: #e3a3b4; --lt-input-bg: #ffe4eb; --lt-border: #ffe4eb; --lt-user-msg: #ffd1dc; }
             .theme-dark { --lt-bg: #1a1a2e; --lt-panel: #16213e; --lt-text-main: #e0e0e0; --lt-text-sub: #8a9ea8; --lt-primary: #0f3460; --lt-primary-hover: #1a4b85; --lt-input-bg: #1a1a2e; --lt-border: #0f3460; --lt-user-msg: #0f3460; --lt-char-msg: #16213e; }
@@ -99,6 +104,8 @@ window.RochePlugin.register({
             .roche-lt-msg-bubble:active { filter: brightness(0.95); }
             .roche-lt-msg.user .roche-lt-msg-bubble { background: var(--lt-user-msg); border-bottom-right-radius: 4px; }
             .roche-lt-msg.char .roche-lt-msg-bubble { background: var(--lt-char-msg); border: 1px solid var(--lt-border); border-bottom-left-radius: 4px; }
+            .roche-lt-msg.pending { opacity: 0.6; }
+            .roche-lt-msg.pending .roche-lt-msg-bubble { border: 1px dashed var(--lt-primary); }
 
             .roche-lt-input-group { display: flex; flex-direction: column; gap: 10px; }
             .roche-lt-input-row { display: flex; gap: 10px; }
@@ -120,7 +127,7 @@ window.RochePlugin.register({
             .roche-lt-delete-text { color: #d98888; font-size: 13px; align-self: center; cursor: pointer; margin-right: auto; }
             
             /* 复选框样式 */
-            .roche-lt-checkbox-list { display: flex; flex-direction: column; gap: 8px; background: var(--lt-input-bg); padding: 12px; border-radius: 12px; overflow-y: auto; margin-bottom: 16px; }
+            .roche-lt-checkbox-list { display: flex; flex-direction: column; gap: 8px; background: var(--lt-input-bg); padding: 12px; border-radius: 12px; max-height: 150px; overflow-y: auto; margin-bottom: 16px; }
             .roche-lt-checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--lt-text-main); cursor: pointer; }
             
             /* 气泡长按菜单 */
@@ -131,16 +138,6 @@ window.RochePlugin.register({
             .roche-lt-action-item:last-child { border-bottom: none; }
             .roche-lt-action-item:hover { background: var(--lt-bg); }
             .roche-lt-action-item.danger { color: #d98888; }
-
-            /* 新增：多选与重录工具栏样式 */
-            .roche-lt-msg-checkbox { margin-right: 10px; width: 16px; height: 16px; accent-color: var(--lt-primary); flex-shrink: 0; display: none; margin-top: 20px;}
-            .roche-lt-msg-wrap { display: flex; align-items: flex-start; width: 100%; }
-            .roche-lt-msg-wrap.user { flex-direction: row-reverse; }
-            .roche-lt-msg-wrap.user .roche-lt-msg-checkbox { margin-right: 0; margin-left: 10px; }
-            .roche-lt-msg-wrap.show-checkbox .roche-lt-msg-checkbox { display: block; }
-            .roche-lt-multiselect-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: var(--lt-input-bg); border-radius: 12px; margin-bottom: 10px; }
-            .roche-lt-bottom-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
-            .roche-lt-reroll-wrap { display: flex; align-items: center; gap: 5px; }
             
             @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
             .roche-lt-hidden { display: none !important; }
@@ -157,18 +154,14 @@ window.RochePlugin.register({
         
         let savedCollections = (await roche.storage.get("collections")) || [];
         
-        // [修改1.3] 剧场专属设定存储（升级为数组对象结构）
+        // [修复] 新增专属世界书存储
         let customWorldbooks = (await roche.storage.get("lt_custom_wbs")) || [];
-        // 兼容老版本空壳的数据结构转换
-        if (customWorldbooks.length > 0 && typeof customWorldbooks[0].keyword === 'undefined' && customWorldbooks[0].content) {
-             customWorldbooks = [{ id: crypto.randomUUID(), keyword: "未命名专属设定", content: customWorldbooks[0].content }];
-        }
 
         let settings = (await roche.storage.get("lt_settings")) || {
           theme: "default",
-          wbCatIds: [],      // [修改1.2] 改为数组以支持多选分组
-          wbEntryIds: [],    
-          useCustomWb: false, 
+          wbCatId: "",     
+          wbEntryIds: [],   // [修复] 改为数组支持多选
+          useCustomWb: false, // 启用剧场专属世界书
           apiBase: "", 
           apiKey: "", 
           chatStyle: "mixed",
@@ -177,8 +170,6 @@ window.RochePlugin.register({
           memIncludeChat: true,
           memChatLimit: 50
         };
-        // 兼容老版本单选分组的升级
-        if(settings.wbCatId && !settings.wbCatIds) { settings.wbCatIds = [settings.wbCatId]; }
 
         let characters = await roche.character.list();
         let conversations = await roche.conversation.list({ isGroup: false });
@@ -187,16 +178,13 @@ window.RochePlugin.register({
         let activePrompt = null;
         let vignetteText = "";
         let chatMessages = [];
+        let pendingUserMsgs = [];
         let isGenerating = false;
         let currentCollectionId = null; 
         
         let searchKeyword = "";
         let activeCategory = "全部";
         let activeMenuIndex = -1; // 当前激活的菜单索引
-        
-        // [修改2] 多选模式相关状态
-        let isMultiSelectMode = false;
-        let selectedMsgs = new Set();
 
         // --- 3. 初始结构渲染 ---
         container.innerHTML = `
@@ -272,26 +260,13 @@ window.RochePlugin.register({
                 </div>
                 
                 <div class="roche-lt-chat-box">
-                  <div id="lt-multiselect-bar" class="roche-lt-multiselect-bar roche-lt-hidden">
-                     <span style="font-size:13px;">已选择 <span id="lt-sel-count" style="color:var(--lt-primary); font-weight:bold;">0</span> 条</span>
-                     <div style="display:flex; gap:8px;">
-                        <button id="lt-del-sel-btn" class="roche-lt-btn-outline" style="color:#d98888; border-color:#d98888;">删除</button>
-                        <button id="lt-exit-sel-btn" class="roche-lt-btn-outline">退出多选</button>
-                     </div>
-                  </div>
                   <div id="lt-chat-history" class="roche-lt-chat-history"></div>
                   
                   <div class="roche-lt-input-group">
-                    <div class="roche-lt-chat-hint">提示：长按气泡【引用/撤回】 | 回车键发送至面板 | 点击【发给AI】触发回复</div>
+                    <div class="roche-lt-chat-hint">提示：长按对话气泡可【引用/撤回/重Roll】</div>
                     <div class="roche-lt-input-row">
                       <input type="text" id="lt-chat-input" placeholder="输入探讨内容，按回车发送...">
-                      <button id="lt-chat-send-btn" class="roche-lt-btn" style="padding: 10px 18px; border-radius: 18px;">发给AI</button>
-                    </div>
-                    <div class="roche-lt-bottom-tools">
-                       <div class="roche-lt-reroll-wrap">
-                          <button id="lt-reroll-bottom-btn" class="roche-lt-icon-btn" title="重Roll AI回复">🔄</button>
-                       </div>
-                       <button id="lt-toggle-sel-btn" class="roche-lt-btn-outline" style="border:none;">☑️ 多选</button>
+                      <button id="lt-chat-send-btn" class="roche-lt-btn" style="padding: 10px 18px; border-radius: 18px;">发送</button>
                     </div>
                   </div>
                 </div>
@@ -322,11 +297,8 @@ window.RochePlugin.register({
           theaterScroll: container.querySelector("#lt-theater-scroll"),
           vignetteContent: container.querySelector("#lt-vignette-content"),
           vignetteTitle: container.querySelector("#lt-vignette-title"),
-          
           chatHistory: container.querySelector("#lt-chat-history"),
           chatInput: container.querySelector("#lt-chat-input"),
-          multiSelectBar: container.querySelector("#lt-multiselect-bar"),
-          selCount: container.querySelector("#lt-sel-count"),
           
           modalWrapper: container.querySelector("#lt-modal-wrapper"),
           modalContent: container.querySelector("#lt-modal-content")
@@ -348,10 +320,11 @@ window.RochePlugin.register({
           renderCollection();
         };
 
+        // --- 点击外部关闭聊天长按菜单 ---
         dom.wrap.addEventListener('click', (e) => {
           if (!e.target.closest('.roche-lt-action-menu') && !e.target.closest('.roche-lt-msg-bubble')) {
             activeMenuIndex = -1;
-            renderChatHistory(); // 这个函数在下半部分定义
+            renderChatHistory();
           }
         });
 
@@ -400,70 +373,28 @@ window.RochePlugin.register({
           dom.generateBtn.disabled = !(activePrompt && dom.charSelect.value);
         }
 
-        // [修改1.3] 剧场专属设定存储（增加列表与多条目管理）
+        // [增强] 剧场专属设定存储
         container.querySelector("#lt-add-custom-wb-btn").onclick = () => {
-          const renderCWList = () => {
-             dom.modalContent.innerHTML = `
-              <h3 style="margin:0 0 15px 0;">剧场专属世界书</h3>
-              <span style="font-size:12px; color:var(--lt-text-sub); display:block; margin-bottom:8px;">这里的设定只在小剧场内生效，不会污染全局世界书。</span>
-              <div class="roche-lt-checkbox-list" style="max-height:200px;">
-                ${customWorldbooks.length === 0 ? '<div style="font-size:12px;text-align:center;color:var(--lt-text-sub);padding:10px;">暂无专属设定</div>' : ''}
-                ${customWorldbooks.map((cw, idx) => `
-                  <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--lt-border);">
-                    <span style="font-size:13px; font-weight:500;">${cw.keyword || '未命名'}</span>
-                    <div style="display:flex; gap:5px;">
-                      <button class="roche-lt-btn-outline cw-edit-btn" data-idx="${idx}" style="padding:4px 10px; font-size:11px;">编辑</button>
-                      <button class="roche-lt-btn-outline cw-del-btn" data-idx="${idx}" style="padding:4px 10px; font-size:11px; color:#d98888; border-color:#d98888;">删除</button>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-              <div class="roche-lt-modal-actions">
-                <button id="cw-add-new" class="roche-lt-btn-outline">+ 新增条目</button>
-                <button id="cw-close" class="roche-lt-btn">关闭</button>
-              </div>
-            `;
-            dom.modalWrapper.classList.add("show");
-            
-            document.getElementById('cw-close').onclick = () => dom.modalWrapper.classList.remove("show");
-            document.getElementById('cw-add-new').onclick = () => openCWEditor(-1);
-            
-            dom.modalContent.querySelectorAll('.cw-edit-btn').forEach(btn => {
-                btn.onclick = (e) => openCWEditor(parseInt(e.target.dataset.idx));
-            });
-            dom.modalContent.querySelectorAll('.cw-del-btn').forEach(btn => {
-                btn.onclick = async (e) => {
-                    customWorldbooks.splice(parseInt(e.target.dataset.idx), 1);
-                    await roche.storage.set("lt_custom_wbs", customWorldbooks);
-                    renderCWList();
-                };
-            });
+          const wbText = customWorldbooks.length > 0 ? customWorldbooks[0].content : "";
+          dom.modalContent.innerHTML = `
+            <h3 style="margin:0 0 15px 0;">剧场专属世界书 (独立存储)</h3>
+            <span style="font-size:12px; color:var(--lt-text-sub); display:block; margin-bottom:8px;">这里的设定只在小剧场内生效，不会污染全局世界书。</span>
+            <textarea id="cw-content" placeholder="输入剧场共用的背景设定、限制等..." style="height:150px;">${wbText}</textarea>
+            <div class="roche-lt-modal-actions">
+              <button id="cw-cancel" class="roche-lt-btn-outline">取消</button>
+              <button id="cw-save" class="roche-lt-btn" style="padding: 8px 20px;">保存设定</button>
+            </div>
+          `;
+          dom.modalWrapper.classList.add("show");
+          document.getElementById('cw-cancel').onclick = () => dom.modalWrapper.classList.remove("show");
+          document.getElementById('cw-save').onclick = async () => {
+            const content = document.getElementById('cw-content').value.trim();
+            if(content) customWorldbooks = [{ id: 'cw_1', content }];
+            else customWorldbooks = [];
+            await roche.storage.set("lt_custom_wbs", customWorldbooks);
+            dom.modalWrapper.classList.remove("show");
+            roche.ui.toast("专属设定已保存");
           };
-
-          const openCWEditor = (idx) => {
-             const cw = idx >= 0 ? customWorldbooks[idx] : { keyword: '', content: '' };
-             dom.modalContent.innerHTML = `
-                <h3 style="margin:0 0 15px 0;">${idx >= 0 ? '编辑' : '新增'}专属设定</h3>
-                <input type="text" id="cw-keyword" placeholder="关键词/条目名称" value="${cw.keyword}">
-                <textarea id="cw-content" placeholder="设定内容..." style="height:150px;">${cw.content}</textarea>
-                <div class="roche-lt-modal-actions">
-                  <button id="cw-editor-cancel" class="roche-lt-btn-outline">返回列表</button>
-                  <button id="cw-editor-save" class="roche-lt-btn">保存条目</button>
-                </div>
-             `;
-             document.getElementById('cw-editor-cancel').onclick = renderCWList;
-             document.getElementById('cw-editor-save').onclick = async () => {
-                 const kw = document.getElementById('cw-keyword').value.trim();
-                 const ct = document.getElementById('cw-content').value.trim();
-                 if(!kw) return roche.ui.toast("请输入关键词");
-                 if(idx >= 0) { customWorldbooks[idx] = { keyword: kw, content: ct }; }
-                 else { customWorldbooks.unshift({ id: crypto.randomUUID(), keyword: kw, content: ct }); }
-                 await roche.storage.set("lt_custom_wbs", customWorldbooks);
-                 renderCWList();
-             };
-          };
-
-          renderCWList();
         };
 
         // --- 6. 模态框 (提示词 / 设置 / 记忆 / 总结) ---
@@ -537,7 +468,7 @@ window.RochePlugin.register({
           };
         };
 
-        // [修改1.1 & 1.2]：修复名称解析 + 多选分组列表
+        // [修复]：世界书精确选择 - 修复命名展示与多选Bug
         container.querySelector("#lt-settings-btn").onclick = async () => {
           dom.modalContent.innerHTML = `
             <h3 style="margin:0 0 15px 0;">剧场全局设置</h3>
@@ -549,22 +480,18 @@ window.RochePlugin.register({
               <option value="dark" ${settings.theme==='dark'?'selected':''}>暗夜蓝 (深色)</option>
             </select>
             
-            <span style="font-size:12px; color:var(--lt-text-sub);">挂载全局世界书分组 (可多选)</span>
-            <div class="roche-lt-checkbox-list" style="max-height: 120px; padding: 10px;">
-               ${worldbookCategories.map(w => `
-                  <label class="roche-lt-checkbox-item">
-                    <input type="checkbox" class="wb-cat-checkbox" value="${w.id}" ${(settings.wbCatIds||[]).includes(w.id)?'checked':''}>
-                    ${w.name}
-                  </label>
-               `).join('')}
-            </div>
+            <span style="font-size:12px; color:var(--lt-text-sub);">挂载全局世界书分类</span>
+            <select id="s-wb-cat">
+              <option value="">不挂载 / 忽略世界书</option>
+              ${worldbookCategories.map(w => `<option value="${w.id}" ${settings.wbCatId===w.id?'selected':''}>${w.name}</option>`).join('')}
+            </select>
             
-            <div id="wb-entries-wrapper">
+            <div id="wb-entries-wrapper" style="${settings.wbCatId ? '' : 'display:none;'}">
               <span style="font-size:12px; color:var(--lt-text-sub); display:flex; justify-content:space-between;">
                 挂载具体词条 (可多选)
                 <span id="s-wb-select-all" style="cursor:pointer; color:var(--lt-primary);">全选/反选</span>
               </span>
-              <div id="s-wb-entries-list" class="roche-lt-checkbox-list" style="max-height: 150px;"></div>
+              <div id="s-wb-entries-list" class="roche-lt-checkbox-list"></div>
             </div>
 
             <label style="cursor:pointer; margin-top: 10px;">
@@ -584,34 +511,28 @@ window.RochePlugin.register({
           `;
           dom.modalWrapper.classList.add("show");
 
+          const catSelect = document.getElementById('s-wb-cat');
+          const entriesWrapper = document.getElementById('wb-entries-wrapper');
           const entriesList = document.getElementById('s-wb-entries-list');
           let currentEntries = [];
           
-          const loadEntries = async () => {
-            const selectedCats = Array.from(document.querySelectorAll('.wb-cat-checkbox:checked')).map(cb => cb.value);
-            if(selectedCats.length === 0) {
-                entriesList.innerHTML = `<div style="text-align:center; color:var(--lt-text-sub); font-size:12px;">请先选择分组</div>`;
-                return;
-            }
+          const loadEntries = async (categoryId) => {
             entriesList.innerHTML = `<div style="text-align:center; color:var(--lt-text-sub); font-size:12px;">加载中...</div>`;
+            if(!categoryId) { entriesWrapper.style.display = 'none'; return; }
+            entriesWrapper.style.display = 'block';
             try {
-              currentEntries = [];
-              for(const catId of selectedCats) {
-                 const res = await roche.worldbook.getEntries({ categoryId: catId, scope: "global" });
-                 currentEntries = currentEntries.concat(res);
-              }
-              
+              currentEntries = await roche.worldbook.getEntries({ categoryId, scope: "global" });
               if(currentEntries.length === 0) {
-                entriesList.innerHTML = `<div style="text-align:center; color:var(--lt-text-sub); font-size:12px;">选中分组下暂无词条</div>`;
+                entriesList.innerHTML = `<div style="text-align:center; color:var(--lt-text-sub); font-size:12px;">该分类下暂无词条</div>`;
                 return;
               }
               entriesList.innerHTML = currentEntries.map(e => {
-                // [修改1.1] 完美解析各种情况的词条名称
-                let displayName = e.keyword || e.name || (e.keys && e.keys.join(', ')) || e.id;
-                if (displayName.startsWith('entry_') || /^[0-9]+$/.test(displayName) || !displayName) {
+                // [修复] 智能解析名称，避免出现 entry_xxx
+                let displayName = e.name || (e.keys && e.keys.join(', ')) || e.id;
+                if (displayName.startsWith('entry_') || /^[0-9]+$/.test(displayName)) {
                     displayName = e.content ? e.content.substring(0, 15) + '...' : '未命名词条';
                 }
-                const isChecked = (settings.wbEntryIds||[]).includes(e.id);
+                const isChecked = settings.wbEntryIds.includes(e.id);
                 return `
                   <label class="roche-lt-checkbox-item">
                     <input type="checkbox" class="wb-entry-checkbox" value="${e.id}" ${isChecked ? 'checked' : ''}>
@@ -622,11 +543,12 @@ window.RochePlugin.register({
             } catch(e) { console.error("加载词条失败", e); entriesList.innerHTML = "加载失败"; }
           };
 
-          await loadEntries();
+          if(settings.wbCatId) await loadEntries(settings.wbCatId);
 
-          document.querySelectorAll('.wb-cat-checkbox').forEach(cb => {
-              cb.onchange = () => { loadEntries(); };
-          });
+          catSelect.onchange = (e) => {
+             settings.wbEntryIds = []; // 切换分类时清空选择
+             loadEntries(e.target.value);
+          };
 
           document.getElementById('s-wb-select-all').onclick = () => {
              const boxes = document.querySelectorAll('.wb-entry-checkbox');
@@ -637,9 +559,10 @@ window.RochePlugin.register({
           document.getElementById('s-close').onclick = () => dom.modalWrapper.classList.remove("show");
           document.getElementById('s-save').onclick = async () => {
             settings.theme = document.getElementById('s-theme').value;
-            settings.wbCatIds = Array.from(document.querySelectorAll('.wb-cat-checkbox:checked')).map(cb => cb.value);
+            settings.wbCatId = document.getElementById('s-wb-cat').value;
             settings.useCustomWb = document.getElementById('s-use-custom').checked;
             
+            // 收集选中的词条 ID
             const checkedBoxes = document.querySelectorAll('.wb-entry-checkbox:checked');
             settings.wbEntryIds = Array.from(checkedBoxes).map(b => b.value);
             
@@ -650,409 +573,403 @@ window.RochePlugin.register({
             roche.ui.toast("设置已保存");
           };
         };
-        // --- 7. 收藏夹管理 ---
-        function renderCollection() {
-          if (savedCollections.length === 0) {
-            dom.colArea.innerHTML = `<div style="text-align:center; color:var(--lt-text-sub); margin-top: 50px;">暂无收藏剧场，快去创作吧~</div>`;
-            return;
-          }
-          dom.colArea.innerHTML = savedCollections.map(c => `
-            <div class="roche-lt-col-item" data-id="${c.id}">
-              <div style="display:flex; justify-content:space-between;">
-                <div class="roche-lt-col-title">${c.title}</div>
-                <div class="roche-lt-delete-text col-del-btn" data-id="${c.id}">删除</div>
-              </div>
-              <div class="roche-lt-col-desc">${c.content}</div>
-              <div class="roche-lt-col-meta">${c.date} | ${c.charName}</div>
-            </div>
-          `).join('');
 
-          dom.colArea.querySelectorAll('.roche-lt-col-item').forEach(el => {
-            el.onclick = (e) => {
-              if(e.target.classList.contains('col-del-btn')) return;
-              const c = savedCollections.find(sc => sc.id === el.dataset.id);
-              if (c) openTheater(c.title, c.content, c.chat, c.charId, c.id);
-            };
-          });
-
-          dom.colArea.querySelectorAll('.col-del-btn').forEach(btn => {
-            btn.onclick = async (e) => {
-              savedCollections = savedCollections.filter(sc => sc.id !== e.target.dataset.id);
-              await roche.storage.set("collections", savedCollections);
-              renderCollection();
-            };
-          });
+        // --- 7. 独立API 与 AI核心逻辑 ---
+        async function fetchAI(sysPrompt, msgs = []) {
+          const apiMsgs = [{ role: "system", content: sysPrompt }, ...msgs];
+          const res = await roche.ai.chat({ messages: apiMsgs, temperature: 0.75 });
+          return res.text;
         }
 
-        // --- 8. 生成剧场内容 ---
+        async function buildContext(charId, convId) {
+          const userP = await roche.persona.getActiveUserPersona();
+          const char = await roche.character.get(charId);
+          let extra = "";
+          
+          if (convId) {
+            const lt = await roche.memory.getLongTerm({ conversationId: convId, limit: 100 });
+            if (settings.memIncludeCore && lt.core && lt.core.summary) extra += `【核心设定与记忆】：${lt.core.summary}\n`;
+            if (settings.memIncludeFacts && lt.facts && lt.facts.length > 0) {
+              const factLines = lt.facts.map(f => f.summaryText || f.action || f.text).filter(Boolean);
+              if (factLines.length > 0) extra += `【既往事实/经历】：${factLines.join("；")}\n`;
+            }
+            if (settings.memIncludeChat) {
+              const limit = settings.memChatLimit || 50;
+              const st = await roche.memory.getShortTerm({ conversationId: convId, limit });
+              if (st && st.length > 0) {
+                const chatLines = st.map(m => `${m.senderName || m.senderHandle || '未知'}: ${m.text}`);
+                extra += `【近期对话参考】：\n${chatLines.join("\n")}\n`;
+              }
+            }
+          }
+
+          if (settings.wbCatId) {
+            try {
+              const entries = await roche.worldbook.getEntries({ categoryId: settings.wbCatId, scope: "global" });
+              // [修复] 多选过滤
+              let targetEntries = entries;
+              if (settings.wbEntryIds && settings.wbEntryIds.length > 0) {
+                targetEntries = entries.filter(e => settings.wbEntryIds.includes(e.id));
+              }
+              if (targetEntries.length > 0) {
+                const wbContent = targetEntries.map(e => e.content || e.text || "").filter(Boolean).join("；\n");
+                extra += `【全局世界观设定】：\n${wbContent}\n`;
+              }
+            } catch(e) { console.warn("世界书加载失败", e); }
+          }
+
+          // [修复] 注入专属世界书
+          if (settings.useCustomWb && customWorldbooks.length > 0) {
+             extra += `【剧场专属设定】：\n${customWorldbooks[0].content}\n`;
+          }
+
+          return { user: userP, char, extra };
+        }
+
+        dom.charSelect.onchange = () => { dom.generateBtn.disabled = !(activePrompt && dom.charSelect.value); };
+
         dom.generateBtn.onclick = async () => {
-          const charId = dom.charSelect.value;
-          if (!activePrompt || !charId) return roche.ui.toast("请选择角色和灵感");
+          if (!activePrompt || !dom.charSelect.value) return;
+          isGenerating = true; dom.generateBtn.textContent = "执笔中...";
           
-          isGenerating = true;
-          dom.generateBtn.disabled = true;
-          dom.generateBtn.textContent = "正在构建世界观...";
-
           try {
-            const char = await roche.character.get(charId);
+            const ctx = await buildContext(dom.charSelect.value, dom.convSelect.value);
+            const sys = `你是一个优秀的小剧场作家。请根据设定写一段沉浸式短文。
+            用户(${ctx.user.name})：${ctx.user.persona || ""}
+            搭档(${ctx.char.name})：${ctx.char.persona || ""}
+            ${ctx.extra}
+            【剧场要求】
+            标题：${activePrompt.title}
+            剧情设定：${activePrompt.content}
+            直接输出正文，文笔细腻，符合人设。`;
+
+            vignetteText = await fetchAI(sys, [{ role: "user", content: "请开始编写。" }]);
+            chatMessages = [];
+            pendingUserMsgs = [];
+            currentCollectionId = null;
             
-            // 组装系统 Prompt (包含记忆与世界书)
-            let systemPrompt = `你现在是一位天才小说家，请根据以下设定，撰写一段约 300-500 字的沉浸式场景开场白（第三人称叙事）。\n\n【角色设定】\n姓名：${char.name}\n${char.description || ''}\n\n【核心剧情/灵感】\n${activePrompt.content}\n\n`;
-            
-            // [修改1.3] 注入剧场专属世界书
-            if (settings.useCustomWb && customWorldbooks && customWorldbooks.length > 0) {
-               systemPrompt += `【剧场专属设定】\n`;
-               customWorldbooks.forEach(cw => {
-                   systemPrompt += `- ${cw.keyword}: ${cw.content}\n`;
-               });
-               systemPrompt += `\n`;
-            }
-
-            // 挂载全局世界书词条
-            if (settings.wbEntryIds && settings.wbEntryIds.length > 0) {
-               systemPrompt += `【世界观补充】\n`;
-               for (const eid of settings.wbEntryIds) {
-                   try {
-                     const entry = await roche.worldbook.getEntry(eid);
-                     if(entry && entry.content) systemPrompt += `- ${entry.content}\n`;
-                   } catch(e) {}
-               }
-               systemPrompt += `\n`;
-            }
-
-            // 挂载长期/短期记忆
-            const convId = dom.convSelect.value;
-            if (convId) {
-                systemPrompt += `【历史记忆参考】\n`;
-                if (settings.memIncludeCore || settings.memIncludeFacts) {
-                   const mems = await roche.memory.get(convId);
-                   if (settings.memIncludeCore && mems.core) systemPrompt += `核心记忆：${mems.core}\n`;
-                   if (settings.memIncludeFacts && mems.facts) systemPrompt += `重要事实：${mems.facts}\n`;
-                }
-                if (settings.memIncludeChat) {
-                   const msgs = await roche.conversation.getMessages(convId, { limit: settings.memChatLimit });
-                   if (msgs && msgs.length > 0) {
-                       systemPrompt += `近期聊天摘要参考：\n`;
-                       msgs.forEach(m => systemPrompt += `${m.role === 'user' ? '我' : char.name}: ${m.content.substring(0, 50)}...\n`);
-                   }
-                }
-                systemPrompt += `\n`;
-            }
-
-            systemPrompt += `【要求】文笔优美，情感细腻，只需输出场景描写，不要让角色说话，将氛围烘托到极致，等待后续互动。`;
-
-            // 调用 AI 生成 (根据具体宿主环境 API 调整)
-            const response = await roche.ai.chat({
-              messages: [{ role: "user", content: systemPrompt }]
-            });
-
-            const content = response.content || response;
-            openTheater(activePrompt.title, content, [], charId, null);
-            
-          } catch (error) {
-            console.error("生成失败", error);
-            roche.ui.toast("生成失败，请检查 API 设置或网络");
-          } finally {
-            isGenerating = false;
-            dom.generateBtn.disabled = false;
-            dom.generateBtn.textContent = "执笔生成";
-          }
+            dom.vignetteTitle.textContent = activePrompt.title;
+            dom.vignetteContent.textContent = vignetteText;
+            renderChatHistory();
+            dom.theaterArea.classList.add("active");
+          } catch(e) { roche.ui.toast(e.message); }
+          finally { isGenerating = false; dom.generateBtn.textContent = "执笔生成"; }
         };
 
-        // --- 9. 剧场界面交互 ---
-        function openTheater(title, content, chat = [], charId, collectionId = null) {
-          dom.vignetteTitle.textContent = title;
-          dom.vignetteContent.textContent = content;
-          vignetteText = content;
-          chatMessages = chat;
-          dom.charSelect.value = charId;
-          currentCollectionId = collectionId;
-          
-          isMultiSelectMode = false;
-          selectedMsgs.clear();
-          dom.multiSelectBar.classList.add('roche-lt-hidden');
-          
-          renderChatHistory();
-          dom.theaterArea.classList.add("active");
-        }
-
-        container.querySelector("#lt-close-theater-btn").onclick = () => {
-          dom.theaterArea.classList.remove("active");
-          dom.theaterArea.classList.remove("fullscreen");
-        };
-        
-        container.querySelector("#lt-fullscreen-btn").onclick = () => {
-          dom.theaterArea.classList.toggle("fullscreen");
-        };
-
-        // --- 10. 长按菜单与聊天记录渲染 ---
+        // --- 8. 聊天交互增强 (长按菜单、引用、撤回) ---
         function renderChatHistory() {
-          dom.chatHistory.innerHTML = chatMessages.map((msg, index) => `
-            <div class="roche-lt-msg-wrap ${msg.role === 'user' ? 'user' : 'char'} ${isMultiSelectMode ? 'show-checkbox' : ''}">
-               <input type="checkbox" class="roche-lt-msg-checkbox" data-idx="${index}" ${selectedMsgs.has(index) ? 'checked' : ''}>
-               <div class="roche-lt-msg ${msg.role === 'user' ? 'user' : 'char'}" data-index="${index}">
-                 ${msg.role !== 'user' ? `<div class="roche-lt-msg-name">${msg.name || '角色'}</div>` : ''}
-                 <div class="roche-lt-msg-bubble">${msg.content}</div>
-                 ${activeMenuIndex === index ? `
-                   <div class="roche-lt-action-menu ${msg.role === 'user' ? 'user-menu' : 'char-menu'}">
-                     <div class="roche-lt-action-item action-quote">引用回复</div>
-                     <div class="roche-lt-action-item action-copy">复制文本</div>
-                     <div class="roche-lt-action-item danger action-delete">撤回/删除</div>
-                   </div>
-                 ` : ''}
-               </div>
+          let html = chatMessages.map((m, idx) => `
+            <div class="roche-lt-msg ${m.role}" data-index="${idx}">
+              <div class="roche-lt-msg-name">${m.name}</div>
+              <div class="roche-lt-msg-bubble">${m.content}</div>
+              ${activeMenuIndex === idx ? `
+                <div class="roche-lt-action-menu ${m.role === 'user' ? 'user-menu' : 'char-menu'}">
+                  <div class="roche-lt-action-item action-quote" data-idx="${idx}">引用</div>
+                  ${m.role === 'char' && idx === chatMessages.length - 1 ? `<div class="roche-lt-action-item action-reroll" data-idx="${idx}">重Roll</div>` : ''}
+                  <div class="roche-lt-action-item action-delete danger" data-idx="${idx}">撤回/删除</div>
+                </div>
+              ` : ''}
             </div>
           `).join('');
+          
+          html += pendingUserMsgs.map(text => `
+            <div class="roche-lt-msg user pending">
+              <div class="roche-lt-msg-name">我 (未发送)</div>
+              <div class="roche-lt-msg-bubble">${text}</div>
+            </div>
+          `).join('');
+          
+          dom.chatHistory.innerHTML = html;
+          
+          // [修复Bug] 防止频繁跳动，采用平滑滚动到特定锚点
+          setTimeout(() => {
+             dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight;
+          }, 50);
 
-          // 绑定多选复选框事件
-          dom.chatHistory.querySelectorAll('.roche-lt-msg-checkbox').forEach(cb => {
-             cb.onchange = (e) => {
-                const idx = parseInt(e.target.dataset.idx);
-                if (e.target.checked) selectedMsgs.add(idx);
-                else selectedMsgs.delete(idx);
-                dom.selCount.textContent = selectedMsgs.size;
+          // 绑定长按与点击事件
+          dom.chatHistory.querySelectorAll('.roche-lt-msg').forEach(el => {
+             const idx = parseInt(el.dataset.index);
+             if (isNaN(idx)) return;
+             
+             const bubble = el.querySelector('.roche-lt-msg-bubble');
+             let pressTimer;
+             const startPress = () => pressTimer = setTimeout(() => { activeMenuIndex = idx; renderChatHistory(); }, 500);
+             const cancelPress = () => clearTimeout(pressTimer);
+             
+             bubble.addEventListener('touchstart', startPress, {passive:true});
+             bubble.addEventListener('touchend', cancelPress);
+             bubble.addEventListener('touchmove', cancelPress, {passive:true});
+             bubble.addEventListener('mousedown', startPress);
+             bubble.addEventListener('mouseup', cancelPress);
+             bubble.addEventListener('mouseleave', cancelPress);
+             
+             // 桌面端右键也可呼出
+             bubble.addEventListener('contextmenu', (e) => {
+               e.preventDefault();
+               activeMenuIndex = idx;
+               renderChatHistory();
+             });
+          });
+
+          // 绑定菜单动作
+          dom.chatHistory.querySelectorAll('.action-quote').forEach(el => {
+             el.onclick = (e) => {
+               e.stopPropagation();
+               const idx = parseInt(el.dataset.idx);
+               const textToQuote = chatMessages[idx].content;
+               dom.chatInput.value = `「${textToQuote}」\n` + dom.chatInput.value;
+               activeMenuIndex = -1;
+               renderChatHistory();
+               dom.chatInput.focus();
+             };
+          });
+          
+          dom.chatHistory.querySelectorAll('.action-delete').forEach(el => {
+             el.onclick = (e) => {
+               e.stopPropagation();
+               const idx = parseInt(el.dataset.idx);
+               chatMessages.splice(idx, 1);
+               activeMenuIndex = -1;
+               renderChatHistory();
+               autoSaveCollection();
              };
           });
 
-          // 长按气泡事件
-          dom.chatHistory.querySelectorAll('.roche-lt-msg').forEach(el => {
-            const index = parseInt(el.dataset.index);
-            let timer, startX, isDrag = false;
-            
-            const startPress = () => timer = setTimeout(() => {
-              if (isMultiSelectMode) return; 
-              activeMenuIndex = index;
-              renderChatHistory();
-            }, 500);
-            
-            const cancelPress = () => clearTimeout(timer);
-            
-            el.addEventListener('touchstart', (e) => { isDrag=false; startX=e.touches[0].clientX; startPress(); }, {passive:true});
-            el.addEventListener('touchmove', (e) => { if(Math.abs(e.touches[0].clientX-startX)>10) { isDrag=true; cancelPress(); } }, {passive:true});
-            el.addEventListener('touchend', cancelPress);
-            el.addEventListener('mousedown', (e) => { isDrag=false; startX=e.clientX; startPress(); });
-            el.addEventListener('mousemove', (e) => { if(Math.abs(e.clientX-startX)>5) { isDrag=true; cancelPress(); } });
-            el.addEventListener('mouseup', cancelPress);
-            el.addEventListener('mouseleave', cancelPress);
+          dom.chatHistory.querySelectorAll('.action-reroll').forEach(el => {
+             el.onclick = (e) => {
+               e.stopPropagation();
+               const idx = parseInt(el.dataset.idx);
+               chatMessages.splice(idx, 1); // 删掉最后一条AI回复
+               activeMenuIndex = -1;
+               renderChatHistory();
+               triggerAIReply(); // 重新触发AI
+             };
           });
-
-          // 绑定菜单按钮事件
-          if (activeMenuIndex !== -1) {
-            const menu = dom.chatHistory.querySelector('.roche-lt-action-menu');
-            if (menu) {
-              const msg = chatMessages[activeMenuIndex];
-              menu.querySelector('.action-quote').onclick = (e) => {
-                e.stopPropagation();
-                dom.chatInput.value = `「${msg.content.substring(0, 15)}...」\n`;
-                dom.chatInput.focus();
-                activeMenuIndex = -1; renderChatHistory();
-              };
-              menu.querySelector('.action-copy').onclick = (e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(msg.content);
-                roche.ui.toast("已复制");
-                activeMenuIndex = -1; renderChatHistory();
-              };
-              menu.querySelector('.action-delete').onclick = (e) => {
-                e.stopPropagation();
-                chatMessages.splice(activeMenuIndex, 1);
-                activeMenuIndex = -1; renderChatHistory();
-                autoSaveCurrent();
-              };
-            }
-          }
-          
-          setTimeout(() => dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight, 50);
         }
 
-        // [修改2] 多选工具栏操作
-        container.querySelector("#lt-toggle-sel-btn").onclick = () => {
-           isMultiSelectMode = true;
-           selectedMsgs.clear();
-           dom.selCount.textContent = 0;
-           dom.multiSelectBar.classList.remove('roche-lt-hidden');
-           activeMenuIndex = -1;
-           renderChatHistory();
-        };
-        container.querySelector("#lt-exit-sel-btn").onclick = () => {
-           isMultiSelectMode = false;
-           dom.multiSelectBar.classList.add('roche-lt-hidden');
-           renderChatHistory();
-        };
-        container.querySelector("#lt-del-sel-btn").onclick = () => {
-           if (selectedMsgs.size === 0) return roche.ui.toast("未选择任何消息");
-           const indexesToRemove = Array.from(selectedMsgs).sort((a,b) => b - a);
-           indexesToRemove.forEach(idx => chatMessages.splice(idx, 1));
-           
-           isMultiSelectMode = false;
-           dom.multiSelectBar.classList.add('roche-lt-hidden');
-           renderChatHistory();
-           autoSaveCurrent();
-           roche.ui.toast("已批量删除");
-        };
-
-        // --- 11. 发送消息与对话 AI ---
-        const handleSend = async (customText = null, isReroll = false) => {
-          if (isGenerating) return;
-          const text = customText !== null ? customText : dom.chatInput.value.trim();
-          if (!text && !isReroll) return;
-
-          if (!isReroll && customText === null) {
-            chatMessages.push({ role: 'user', content: text });
-            dom.chatInput.value = "";
-            renderChatHistory();
+        dom.chatInput.onkeypress = (e) => {
+          if (e.key === "Enter") {
+            const text = dom.chatInput.value.trim();
+            if(text) { 
+               pendingUserMsgs.push(text); 
+               dom.chatInput.value = ""; 
+               triggerUserSend(); 
+            }
           }
+        };
 
+        container.querySelector("#lt-chat-send-btn").onclick = async () => {
+          const directText = dom.chatInput.value.trim();
+          if(directText) { pendingUserMsgs.push(directText); dom.chatInput.value = ""; }
+          triggerUserSend();
+        };
+
+        async function triggerUserSend() {
+          if(pendingUserMsgs.length === 0 || isGenerating) return;
+          const combinedMsg = pendingUserMsgs.join("\n");
+          const ctx = await buildContext(dom.charSelect.value, null);
+          chatMessages.push({ role: "user", name: ctx.user.name || "我", content: combinedMsg });
+          pendingUserMsgs = [];
+          renderChatHistory();
+          triggerAIReply();
+        }
+
+        async function triggerAIReply() {
+          if(isGenerating) return;
           isGenerating = true;
-          container.querySelector("#lt-chat-send-btn").disabled = true;
+          try {
+            const ctx = await buildContext(dom.charSelect.value, null);
+            const userName = ctx.user.name || "我";
+            const charName = ctx.char.name || "角色";
+            const styleReq = settings.chatStyle === 'pure' ? '【重要要求】：请只输出你的对白，不要包含任何动作描写和心理活动。' : '可以包含动作和心理描写。';
+            
+            const sys = `你是${charName}，正在和${userName}一起看关于你们的小说片段。
+            【阅读内容】${vignetteText}
+            任务：自然回应用户的探讨，保持人设。${styleReq}`;
+            
+            const apiMsgs = chatMessages.map(m => ({ role: m.role==='user'?'user':'assistant', content: m.content }));
+            const fullReply = await fetchAI(sys, apiMsgs);
+            
+            // 简单分段输出，增加真实感
+            chatMessages.push({ role: "char", name: charName, content: fullReply.trim() });
+            renderChatHistory();
+            autoSaveCollection(); 
+          } catch(e) { roche.ui.toast("回复失败"); chatMessages.pop(); renderChatHistory(); }
+          finally { isGenerating = false; }
+        }
+
+        const doContinue = async (userReq) => {
+          if (isGenerating) return;
+          isGenerating = true; roche.ui.toast("续写中...");
+          try {
+            const reqStr = userReq ? `用户期望：${userReq}` : "顺着当前气氛自然续写一段。";
+            const sys = `你是一个小剧场作家。请接续前文，保持文风。
+            【前文】${vignetteText}
+            ${reqStr}`;
+            const append = await fetchAI(sys, []);
+            vignetteText += "\n\n" + append;
+            dom.vignetteContent.textContent = vignetteText;
+            chatMessages.push({ role: "char", name: "系统", content: "剧场内容已更新。" });
+            renderChatHistory();
+            autoSaveCollection();
+          } catch(e) { roche.ui.toast("续写失败"); }
+          finally { isGenerating = false; }
+        };
+        container.querySelector("#lt-continue-ai-btn").onclick = () => doContinue(null);
+        container.querySelector("#lt-continue-co-btn").onclick = () => {
+          const input = prompt("请输入剧情走向：");
+          if(input) doContinue(input);
+        };
+
+        // --- 9. [修复Bug2] 总结摘要并记录精细化主记忆 ---
+        container.querySelector("#lt-summary-btn").onclick = async () => {
+          if(!dom.convSelect.value) {
+            roche.ui.toast("请先在外部选择挂载一个记忆会话以支持主记忆写入。");
+            return;
+          }
+          if(isGenerating) return roche.ui.toast("AI 正在忙碌，请稍后再试。");
+          
+          isGenerating = true;
+          roche.ui.toast("正在生成精细化回忆摘要...");
           
           try {
-            const char = await roche.character.get(dom.charSelect.value);
+            const chatLog = chatMessages.map(m => `${m.name}: ${m.content}`).join("\n");
+            // 强化系统 Prompt，强制要求提取具体细节
+            const sys = `你是一个客观的记忆整理助手。请根据下方提供的内容生成一段第三人称的事实陈述（控制在150字内）。
+            【小剧场正文摘要】：${vignetteText.substring(0, 300)}...
+            【双方观后探讨】：\n${chatLog}
+            【要求】：
+            1. 必须说明具体阅读了什么内容（如：探讨了雨天避雨的情节）。
+            2. 必须记录双方讨论的核心焦点或态度（如：对方觉得很浪漫，而用户觉得...）。
+            3. 拒绝使用“一起阅读并探讨了小剧场”这种废话，要写实质内容。`;
             
-            // 构建上下文
-            const aiMessages = [];
-            let sys = `你现在正在扮演角色：${char.name}。\n`;
-            sys += `【剧场背景与初始场景】\n${vignetteText}\n\n`;
+            const summaryText = await fetchAI(sys, [{role: "user", content: "开始提取精准记忆。"}]);
             
-            if (settings.chatStyle === 'pure') {
-                sys += `【格式要求】请仅输出角色的语言对话，不要包含任何星号、动作描写、心理描写等旁白，直接说话。`;
-            } else {
-                sys += `【格式要求】请结合生动的动作、神态描写与对话进行回复。`;
-            }
+            dom.modalContent.innerHTML = `
+              <h3 style="margin:0 0 15px 0;">剧场共读纪要</h3>
+              <span style="font-size:12px; color:var(--lt-text-sub); display:block; margin-bottom:8px;">AI 提取的深度摘要（将作为具体行为写入）：</span>
+              <textarea id="sum-text" style="height: 120px;">${summaryText}</textarea>
+              
+              <div class="roche-lt-modal-actions" style="margin-top: 15px;">
+                <button id="sum-copy" class="roche-lt-btn-outline" style="border-color:#b5929c; color:#b5929c;">复制内容 (可手动发至对话框)</button>
+                <button id="sum-close" class="roche-lt-btn-outline">取消</button>
+                <button id="sum-save" class="roche-lt-btn" style="padding: 8px 20px;">写入主游戏记忆</button>
+              </div>
+            `;
+            dom.modalWrapper.classList.add("show");
             
-            aiMessages.push({ role: "system", content: sys });
+            document.getElementById('sum-close').onclick = () => dom.modalWrapper.classList.remove("show");
             
-            chatMessages.forEach(m => {
-               aiMessages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content });
-            });
-
-            // 如果是重Roll，加上特定提示
-            if (isReroll) {
-                aiMessages.push({ role: "user", content: "(OOC: 请换一种方式/态度重新回复我上一句话)" });
-            }
-
-            const response = await roche.ai.chat({ messages: aiMessages });
-            const reply = response.content || response;
+            document.getElementById('sum-copy').onclick = async () => {
+               const text = document.getElementById('sum-text').value;
+               try {
+                 await navigator.clipboard.writeText(text);
+                 roche.ui.toast("已复制到剪贴板！");
+               } catch(e) {
+                 roche.ui.toast("复制失败，请手动选取。");
+               }
+            };
             
-            chatMessages.push({ role: 'char', name: char.name, content: reply });
-            renderChatHistory();
-            autoSaveCurrent();
-            
-          } catch (error) {
-            console.error("对话失败", error);
-            roche.ui.toast("对话失败，请检查网络");
+            // 写入强化版事实记忆
+            document.getElementById('sum-save').onclick = async () => {
+              const finalSummary = document.getElementById('sum-text').value.trim();
+              if(!finalSummary) return roche.ui.toast("摘要内容不能为空。");
+              try {
+                await roche.memory.write({
+                  conversationId: dom.convSelect.value,
+                  summaryText: finalSummary, 
+                  who: ["我", "对方"],
+                  action: finalSummary, // 摒弃废话，直接将具体探讨内容写入 action 供模型检索
+                  when: "刚才",
+                  where: "小剧场应用",
+                  source: "little-theater"
+                });
+                roche.ui.toast("已成功写入该角色的长期事实记忆！");
+                dom.modalWrapper.classList.remove("show");
+              } catch(e) {
+                roche.ui.toast("写入记忆失败：" + e.message);
+              }
+            };
+          } catch (e) {
+            roche.ui.toast("总结生成失败：" + e.message);
           } finally {
             isGenerating = false;
-            container.querySelector("#lt-chat-send-btn").disabled = false;
           }
         };
 
-        container.querySelector("#lt-chat-send-btn").onclick = () => handleSend();
-        dom.chatInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') handleSend();
-        });
-
-        // 底部重Roll小按钮
-        container.querySelector("#lt-reroll-bottom-btn").onclick = () => {
-           if (chatMessages.length === 0) return roche.ui.toast("没有可重Roll的记录");
-           if (chatMessages[chatMessages.length - 1].role === 'char') {
-               chatMessages.pop(); // 移除最后一条 AI 回复
-               renderChatHistory();
-               handleSend(null, true);
-           } else {
-               handleSend(null, true);
-           }
-        };
-
-        // 按钮续写工具
-        container.querySelector("#lt-continue-ai-btn").onclick = () => handleSend("(请根据当前氛围，推动剧情发展，直接描写你的行动或话语)");
-        container.querySelector("#lt-continue-co-btn").onclick = () => {
-          dom.chatInput.value = "(OOC: 接下来的剧情，我希望你...)";
-          dom.chatInput.focus();
-        };
-
-        // --- 12. 保存与收录功能 ---
-        async function autoSaveCurrent() {
-          if (currentCollectionId) {
-            const idx = savedCollections.findIndex(c => c.id === currentCollectionId);
-            if (idx > -1) {
-              savedCollections[idx].chat = [...chatMessages];
-              await roche.storage.set("collections", savedCollections);
-            }
+        // --- 10. 收藏馆控制 ---
+        async function autoSaveCollection() {
+          if(!currentCollectionId) return; 
+          const col = savedCollections.find(c => c.id === currentCollectionId);
+          if(col) {
+            col.content = vignetteText;
+            col.chatHistory = [...chatMessages];
+            await roche.storage.set("collections", savedCollections);
           }
         }
 
         container.querySelector("#lt-save-theater-btn").onclick = async () => {
-          if (currentCollectionId) return roche.ui.toast("已在收藏夹中，进度会自动保存");
-          const char = await roche.character.get(dom.charSelect.value);
-          const newCol = {
-            id: crypto.randomUUID(),
-            title: activePrompt.title,
+          if(currentCollectionId) return roche.ui.toast("已在收藏中，内容会自动更新");
+          currentCollectionId = crypto.randomUUID();
+          savedCollections.unshift({
+            id: currentCollectionId,
+            title: activePrompt?.title || "未命名剧场",
+            charId: dom.charSelect.value,
             content: vignetteText,
-            chat: [...chatMessages],
-            charName: char.name,
-            charId: char.id,
-            date: new Date().toLocaleDateString()
-          };
-          savedCollections.unshift(newCol);
-          currentCollectionId = newCol.id;
+            chatHistory: [...chatMessages],
+            date: new Date().toLocaleString()
+          });
           await roche.storage.set("collections", savedCollections);
-          roche.ui.toast("已加入剧场收藏馆！");
+          roche.ui.toast("已保存至收藏馆");
         };
 
-        container.querySelector("#lt-summary-btn").onclick = async () => {
-           if (chatMessages.length < 2) return roche.ui.toast("聊天内容太少，无需总结");
-           dom.modalContent.innerHTML = `
-              <h3 style="margin:0 0 15px 0;">生成剧场记忆总结</h3>
-              <p style="font-size:13px; color:var(--lt-text-sub);">将当前的剧情发展提炼为记忆，存入全局设定或角色的记忆库中。</p>
-              <textarea id="sum-result" placeholder="正在生成总结..." style="height:120px;" readonly></textarea>
-              <div class="roche-lt-modal-actions">
-                <button id="sum-close" class="roche-lt-btn-outline">取消</button>
-                <button id="sum-save" class="roche-lt-btn" disabled>保存至长期记忆</button>
-              </div>
-           `;
-           dom.modalWrapper.classList.add("show");
-           document.getElementById('sum-close').onclick = () => dom.modalWrapper.classList.remove("show");
-           
-           try {
-             let chatText = chatMessages.map(m => `${m.role === 'user' ? '我' : '角色'}: ${m.content}`).join('\n');
-             const res = await roche.ai.chat({
-               messages: [{
-                 role: "user",
-                 content: `请用第三人称，简明扼要地总结以下剧情发展（控制在 100 字以内），提取关键事实，适合作为记忆片段保存：\n\n【开场】\n${vignetteText}\n\n【发展】\n${chatText}`
-               }]
-             });
-             const summary = res.content || res;
-             document.getElementById('sum-result').value = summary;
-             document.getElementById('sum-result').removeAttribute('readonly');
-             document.getElementById('sum-save').disabled = false;
-             
-             document.getElementById('sum-save').onclick = async () => {
-                const finalSum = document.getElementById('sum-result').value;
-                if(dom.convSelect.value) {
-                    await roche.memory.update(dom.convSelect.value, { facts: finalSum }, { append: true });
-                    roche.ui.toast("已追加至对话事实记忆！");
-                } else {
-                    roche.ui.toast("总结成功，已复制到剪贴板，可手动粘贴。");
-                    navigator.clipboard.writeText(finalSum);
-                }
-                dom.modalWrapper.classList.remove("show");
-             };
-           } catch(e) {
-             document.getElementById('sum-result').value = "总结失败，请重试。";
-           }
+        function renderCollection() {
+          dom.colArea.innerHTML = savedCollections.length === 0 ? `<div style="text-align:center; color:var(--lt-text-sub); margin-top:20px;">收藏馆空空如也~</div>` : '';
+          dom.colArea.innerHTML += savedCollections.map(c => `
+            <div class="roche-lt-col-item" data-id="${c.id}">
+              <div class="roche-lt-col-title">${c.title}</div>
+              <div class="roche-lt-col-desc">${c.content.substring(0, 50)}...</div>
+              <div class="roche-lt-col-meta">${c.date}</div>
+            </div>
+          `).join('');
+
+          dom.colArea.querySelectorAll('.roche-lt-col-item').forEach(el => {
+            el.onclick = () => {
+              const col = savedCollections.find(c => c.id === el.dataset.id);
+              currentCollectionId = col.id;
+              vignetteText = col.content;
+              chatMessages = [...col.chatHistory];
+              pendingUserMsgs = [];
+              dom.vignetteTitle.textContent = col.title;
+              dom.vignetteContent.textContent = vignetteText;
+              dom.charSelect.value = col.charId; 
+              renderChatHistory();
+              dom.theaterArea.classList.add("active");
+            };
+          });
+        }
+
+        let isFullscreen = false;
+        container.querySelector("#lt-fullscreen-btn").onclick = (e) => {
+          isFullscreen = !isFullscreen;
+          dom.theaterArea.classList.toggle("fullscreen", isFullscreen);
+          e.target.textContent = isFullscreen ? "退出全屏" : "全屏";
+        };
+        container.querySelector("#lt-close-theater-btn").onclick = () => {
+          dom.theaterArea.classList.remove("active");
+          if(isFullscreen) container.querySelector("#lt-fullscreen-btn").click();
+          if(dom.tabCol.classList.contains('active')) renderCollection();
         };
 
-        // 返回按钮逻辑 (隐藏面板，显示悬浮球)
-        const backBtn = container.querySelector("#lt-back-btn");
-        backBtn.onclick = () => {
-            roche.ui.closeApp("little-theater-app"); // 假设 Roche 有关闭当前 App 视图的 API
-        };
-
-        // 初始化更新 UI
+        dom.wrap.querySelector("#lt-back-btn").onclick = () => roche.ui.closeApp();
         updatePromptUI();
+      },
+      
+      async unmount(container, roche) {
+        const style = document.getElementById("style-roche-little-theater");
+        if (style) style.remove();
+        container.replaceChildren();
       }
     }
-  ]
-});
+  ]});
 
