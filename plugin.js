@@ -1,7 +1,7 @@
 window.RochePlugin.register({
   id: "roche-plugin-little-theater",
   name: "小剧场 Pro Max",
-  version: "1.3.0",
+  version: "1.4.0",
   apps: [
     {
       id: "little-theater-app",
@@ -91,17 +91,20 @@ window.RochePlugin.register({
             .roche-lt-theater-title { font-size: 16px; font-weight: 600; color: var(--lt-text-main); }
             .roche-lt-theater-tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;}
             
-            /* 新增目录样式 */
             .roche-lt-toc-bar { display: flex; gap: 10px; align-items: center; }
             .roche-lt-toc-select { flex: 1; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--lt-border); background: var(--lt-input-bg); color: var(--lt-text-main); outline: none; font-size: 13px; appearance: none; -webkit-appearance: none; }
             
             .roche-lt-theater-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
             .roche-lt-vignette-content { font-size: 15px; line-height: 1.8; color: var(--lt-text-main); white-space: pre-wrap; padding: 15px; background: var(--lt-panel); border-radius: 16px; }
             
-            .roche-lt-chat-box { background: var(--lt-panel); border-radius: 16px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; margin-bottom: 10px; }
+            .roche-lt-chat-box { background: var(--lt-panel); border-radius: 16px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; margin-bottom: 10px; position: relative; }
+            
+            /* 新增分离的多选操作栏 */
+            .roche-lt-chat-actions-bar { display: flex; justify-content: space-between; padding: 10px 12px; background: var(--lt-input-bg); border-radius: 12px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
             .roche-lt-chat-history { display: flex; flex-direction: column; gap: 12px; max-height: 250px; overflow-y: auto; position: relative; }
             
-            /* 解决抖动关键：固定预留左侧选择框容器位置 */
+            /* 防止 CSS 宽度突变导致的抖动，复选框容器始终存在，仅宽度变化 */
             .roche-lt-msg-wrap { display: flex; align-items: flex-start; gap: 0; width: 100%; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
             .roche-lt-msg-check-box { width: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: width 0.2s; margin-top: 15px; }
             .roche-lt-chat-history.select-mode .roche-lt-msg-check-box { width: 28px; }
@@ -117,12 +120,10 @@ window.RochePlugin.register({
             .roche-lt-msg.pending { opacity: 0.6; }
             .roche-lt-msg.pending .roche-lt-msg-bubble { border: 1px dashed var(--lt-primary); }
 
-            /* 正在输入动画 */
             .roche-lt-typing { font-style: italic; color: var(--lt-text-sub); animation: blink 1.5s infinite; }
 
             .roche-lt-chat-history.select-mode .roche-lt-msg { max-width: 100%; }
             .roche-lt-chat-history.select-mode .roche-lt-msg.user { align-items: flex-start; margin-left: 0; }
-            .roche-lt-chat-actions-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; padding: 10px; background: var(--lt-input-bg); border-radius: 12px; margin-bottom: 10px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
 
             .roche-lt-input-group { display: flex; flex-direction: column; gap: 10px; }
             .roche-lt-input-row { display: flex; gap: 8px; align-items: center; }
@@ -182,14 +183,14 @@ window.RochePlugin.register({
         let worldbookCategories = await roche.worldbook.list(); 
         
         let activePrompt = null;
-        let theaterChapters = []; // [{ title, content }] 剧场章节数组
-        let currentChapterIdx = 0; // 当前查看的章节索引
-        let vignetteText = ""; // 当前章节文本
+        let theaterChapters = []; 
+        let currentChapterIdx = 0; 
+        let vignetteText = ""; 
         
-        let chatMessages = []; // { id, role, name, content }
+        let chatMessages = []; 
         let pendingUserMsgs = [];
         let isGenerating = false;
-        let isCharTyping = false; // 新增：正在输入状态
+        let isCharTyping = false; 
         let currentCollectionId = null; 
         
         let isSelectMode = false;
@@ -299,7 +300,18 @@ window.RochePlugin.register({
                 </div>
                 
                 <div class="roche-lt-chat-box">
+                  <!-- 完全分离的多选操作栏 -->
+                  <div id="lt-chat-actions-bar" class="roche-lt-chat-actions-bar" style="display:none;">
+                    <span id="lt-sel-count" style="font-size:12px; font-weight:600;">已选 0 条</span>
+                    <div style="display:flex; gap:8px;">
+                      <button id="lt-sel-quote" class="roche-lt-btn-outline" style="padding:4px 8px;">引用</button>
+                      <button id="lt-sel-del" class="roche-lt-btn-outline" style="padding:4px 8px; border-color:#d98888; color:#d98888;">撤回</button>
+                      <button id="lt-sel-cancel" class="roche-lt-btn-outline" style="padding:4px 8px; border:none; background:transparent;">取消</button>
+                    </div>
+                  </div>
+
                   <div id="lt-chat-history" class="roche-lt-chat-history"></div>
+                  
                   <div class="roche-lt-input-group">
                     <div class="roche-lt-chat-hint">长按消息多选撤回/引用。按回车缓存探讨。</div>
                     <div class="roche-lt-input-row">
@@ -335,8 +347,11 @@ window.RochePlugin.register({
           tocSelect: container.querySelector("#lt-toc-select"),
           vignetteContent: container.querySelector("#lt-vignette-content"),
           vignetteTitle: container.querySelector("#lt-vignette-title"),
+          
+          chatActionBar: container.querySelector("#lt-chat-actions-bar"),
           chatHistory: container.querySelector("#lt-chat-history"),
           chatInput: container.querySelector("#lt-chat-input"),
+          
           modalWrapper: container.querySelector("#lt-modal-wrapper"),
           modalContent: container.querySelector("#lt-modal-content")
         };
@@ -378,9 +393,7 @@ window.RochePlugin.register({
 
           dom.promptScroll.querySelectorAll('.roche-lt-prompt-item').forEach(el => {
             const pId = el.dataset.id;
-            // 点击选中
             el.onclick = () => { activePrompt = prompts.find(p => p.id === pId); updatePromptUI(); dom.generateBtn.disabled = !(activePrompt && dom.charSelect.value); };
-            // 长按编辑
             addSafeLongPress(el, () => openPromptModal(pId));
           });
         }
@@ -449,7 +462,6 @@ window.RochePlugin.register({
           };
         };
 
-        // 专属设定与主世界书设置
         let currentSettingsView = 'main'; 
         let editCustomWbId = null;
 
@@ -505,12 +517,8 @@ window.RochePlugin.register({
               </div>
             `).join('');
 
-            list.querySelectorAll('.c-wb-edit').forEach(el => {
-              el.onclick = () => { currentSettingsView = 'edit-wb'; editCustomWbId = el.dataset.id; renderSettingsModal(); };
-            });
-            list.querySelectorAll('.c-wb-del').forEach(el => {
-              el.onclick = async () => { customWorldbooks = customWorldbooks.filter(c => c.id !== el.dataset.id); await roche.storage.set("lt_custom_wb", customWorldbooks); renderSettingsModal(); };
-            });
+            list.querySelectorAll('.c-wb-edit').forEach(el => { el.onclick = () => { currentSettingsView = 'edit-wb'; editCustomWbId = el.dataset.id; renderSettingsModal(); }; });
+            list.querySelectorAll('.c-wb-del').forEach(el => { el.onclick = async () => { customWorldbooks = customWorldbooks.filter(c => c.id !== el.dataset.id); await roche.storage.set("lt_custom_wb", customWorldbooks); renderSettingsModal(); }; });
             
             document.getElementById('s-wb-add').onclick = () => { currentSettingsView = 'edit-wb'; editCustomWbId = null; renderSettingsModal(); };
             document.getElementById('s-close').onclick = () => dom.modalWrapper.classList.remove("show");
@@ -519,7 +527,6 @@ window.RochePlugin.register({
               settings.theme = document.getElementById('s-theme').value;
               settings.chatStyle = document.getElementById('s-style').value;
               settings.wbCatIds = Array.from(document.querySelectorAll('.c-wb-cat:checked')).map(cb => cb.value);
-              // 保存专属设定的选中状态
               document.querySelectorAll('.c-wb-active').forEach(cb => {
                 let wb = customWorldbooks.find(c => c.id === cb.dataset.id);
                 if(wb) wb.isActive = cb.checked;
@@ -527,11 +534,8 @@ window.RochePlugin.register({
 
               await roche.storage.set("lt_settings", settings);
               await roche.storage.set("lt_custom_wb", customWorldbooks);
-              applyTheme();
-              dom.modalWrapper.classList.remove("show");
-              roche.ui.toast("设置已保存");
+              applyTheme(); dom.modalWrapper.classList.remove("show"); roche.ui.toast("设置已保存");
             };
-
           } else if (currentSettingsView === 'edit-wb') {
             const cWb = editCustomWbId ? customWorldbooks.find(c => c.id === editCustomWbId) : { name:'', content:'' };
             dom.modalContent.innerHTML = `
@@ -548,20 +552,15 @@ window.RochePlugin.register({
               const n = document.getElementById('ew-name').value.trim();
               const ct = document.getElementById('ew-content').value.trim();
               if(!n || !ct) return roche.ui.toast("名称和内容不能为空");
-              if(editCustomWbId) {
-                Object.assign(customWorldbooks.find(c => c.id === editCustomWbId), { name: n, content: ct });
-              } else {
-                customWorldbooks.unshift({ id: crypto.randomUUID(), name: n, content: ct, isActive: true });
-              }
+              if(editCustomWbId) Object.assign(customWorldbooks.find(c => c.id === editCustomWbId), { name: n, content: ct });
+              else customWorldbooks.unshift({ id: crypto.randomUUID(), name: n, content: ct, isActive: true });
+              
               await roche.storage.set("lt_custom_wb", customWorldbooks);
               currentSettingsView = 'main'; renderSettingsModal();
             };
           }
         }
-
-        container.querySelector("#lt-settings-btn").onclick = () => {
-          currentSettingsView = 'main'; dom.modalWrapper.classList.add("show"); renderSettingsModal();
-        };
+        container.querySelector("#lt-settings-btn").onclick = () => { currentSettingsView = 'main'; dom.modalWrapper.classList.add("show"); renderSettingsModal(); };
 
         // --- 6. AI 核心逻辑与上下文 ---
         async function fetchAI(sysPrompt, msgs = []) {
@@ -591,15 +590,11 @@ window.RochePlugin.register({
           if (settings.wbCatIds && settings.wbCatIds.length > 0) {
             let wbContentArr = [];
             for (let catId of settings.wbCatIds) {
-              try {
-                const entries = await roche.worldbook.getEntries({ categoryId: catId, scope: "global" });
-                wbContentArr.push(...entries.map(e => e.content || e.text || "").filter(Boolean));
-              } catch(e) {}
+              try { const entries = await roche.worldbook.getEntries({ categoryId: catId, scope: "global" }); wbContentArr.push(...entries.map(e => e.content || e.text || "").filter(Boolean)); } catch(e) {}
             }
             if (wbContentArr.length > 0) extra += `【主游戏设定】：\n${wbContentArr.join("；\n")}\n`;
           }
           
-          // 只挂载被选中的专属设定
           const activeCustomWb = customWorldbooks.filter(c => c.isActive !== false);
           if (activeCustomWb.length > 0) {
              extra += `【专属小剧场设定】：\n${activeCustomWb.map(c => `${c.name}：${c.content}`).join("；\n")}\n`;
@@ -609,17 +604,14 @@ window.RochePlugin.register({
         }
 // ==================== 第一部分代码结束 ====================
 // ==================== 第二部分代码开始 ====================
+
         dom.charSelect.onchange = () => { dom.generateBtn.disabled = !(activePrompt && dom.charSelect.value); };
 
         function updateTOCUI() {
           dom.tocSelect.innerHTML = theaterChapters.map((c, i) => `<option value="${i}" ${i === currentChapterIdx ? 'selected' : ''}>${c.title}</option>`).join('');
           dom.vignetteContent.textContent = theaterChapters[currentChapterIdx]?.content || "";
         }
-        
-        dom.tocSelect.onchange = (e) => {
-          currentChapterIdx = parseInt(e.target.value);
-          updateTOCUI();
-        };
+        dom.tocSelect.onchange = (e) => { currentChapterIdx = parseInt(e.target.value); updateTOCUI(); };
 
         dom.generateBtn.onclick = async () => {
           if (!activePrompt || !dom.charSelect.value) return;
@@ -642,41 +634,60 @@ window.RochePlugin.register({
             currentChapterIdx = 0;
             vignetteText = text;
             
-            chatMessages = [];
-            pendingUserMsgs = [];
-            isSelectMode = false;
-            selectedMsgIds.clear();
-            currentCollectionId = null;
+            chatMessages = []; pendingUserMsgs = [];
+            quitSelectMode(); currentCollectionId = null;
             
             dom.vignetteTitle.textContent = activePrompt.title;
             updateTOCUI();
             renderChatHistory();
             dom.theaterArea.classList.add("active");
-          } catch(e) { roche.ui.toast(e.message); }
+          } catch(e) { roche.ui.toast("生成失败：" + e.message); }
           finally { isGenerating = false; dom.generateBtn.textContent = "执笔生成"; }
         };
 
-        // --- 7. 聊天、撤回引用多选、重Roll ---
+        // --- 7. 聊天、引用多选 (基于事件委托防失效)、重Roll ---
+
+        // 统一控制多选退出的函数
+        function quitSelectMode() {
+          isSelectMode = false;
+          selectedMsgIds.clear();
+          dom.chatHistory.classList.remove("select-mode");
+          dom.chatActionBar.style.display = "none";
+          renderChatHistory();
+        }
+
+        // [核心修复] 使用事件委托处理复选框的点击，避免重绘导致按钮与滑动失效
+        dom.chatHistory.addEventListener('change', (e) => {
+          if (e.target.classList.contains('roche-lt-msg-check')) {
+            const wrap = e.target.closest('.roche-lt-msg-wrap');
+            if(!wrap) return;
+            const id = wrap.dataset.id;
+            if(e.target.checked) selectedMsgIds.add(id); else selectedMsgIds.delete(id);
+            // 仅更新数字，不重绘整个 HTML
+            document.getElementById('lt-sel-count').textContent = `已选 ${selectedMsgIds.size} 条`;
+          }
+        });
+
+        // 绑定外部固定操作栏按钮 (在 mount 时仅绑定一次，永远不会因为内部 HTML 刷新而失效)
+        container.querySelector('#lt-sel-quote').onclick = () => {
+          if(selectedMsgIds.size === 0) return;
+          const msgs = chatMessages.filter(m => selectedMsgIds.has(m.id));
+          const quoteText = msgs.map(m => `> ${m.name}: ${m.content}`).join("\n");
+          dom.chatInput.value = quoteText + "\n" + dom.chatInput.value;
+          quitSelectMode();
+        };
+        container.querySelector('#lt-sel-del').onclick = () => {
+          if(selectedMsgIds.size === 0) return;
+          chatMessages = chatMessages.filter(m => !selectedMsgIds.has(m.id));
+          quitSelectMode(); autoSaveCollection();
+        };
+        container.querySelector('#lt-sel-cancel').onclick = () => { quitSelectMode(); };
+
         function renderChatHistory() {
           const scrollBox = dom.chatHistory;
           const isAtBottom = scrollBox.scrollHeight - scrollBox.scrollTop <= scrollBox.clientHeight + 15;
-          
-          const containerClass = isSelectMode ? "roche-lt-chat-history select-mode" : "roche-lt-chat-history";
           let html = '';
           
-          if (isSelectMode) {
-            html += `
-              <div class="roche-lt-chat-actions-bar">
-                <span style="font-size:12px; font-weight:600;">已选 ${selectedMsgIds.size} 条</span>
-                <div style="display:flex; gap:8px;">
-                  <button id="lt-sel-quote" class="roche-lt-btn-outline" style="padding:4px 8px;">引用</button>
-                  <button id="lt-sel-del" class="roche-lt-btn-outline" style="padding:4px 8px; border-color:#d98888; color:#d98888;">撤回/删除</button>
-                  <button id="lt-sel-cancel" class="roche-lt-btn-outline" style="padding:4px 8px; border:none; background:transparent;">取消</button>
-                </div>
-              </div>
-            `;
-          }
-
           chatMessages.forEach(m => {
             const checked = selectedMsgIds.has(m.id) ? "checked" : "";
             html += `
@@ -716,50 +727,29 @@ window.RochePlugin.register({
              `;
           }
 
-          dom.chatHistory.className = containerClass;
           dom.chatHistory.innerHTML = html;
           
-          if (isSelectMode) {
-            dom.chatHistory.querySelectorAll('.roche-lt-msg-check').forEach(cb => {
-              cb.onchange = (e) => {
-                const id = e.target.closest('.roche-lt-msg-wrap').dataset.id;
-                if(e.target.checked) selectedMsgIds.add(id); else selectedMsgIds.delete(id);
-                renderChatHistory(); 
-              };
-            });
-            const btnQuote = document.getElementById('lt-sel-quote');
-            const btnDel = document.getElementById('lt-sel-del');
-            const btnCancel = document.getElementById('lt-sel-cancel');
-            
-            if(btnQuote) btnQuote.onclick = () => {
-              if(selectedMsgIds.size === 0) return;
-              const msgs = chatMessages.filter(m => selectedMsgIds.has(m.id));
-              const quoteText = msgs.map(m => `> ${m.name}: ${m.content}`).join("\n");
-              dom.chatInput.value = quoteText + "\n" + dom.chatInput.value;
-              isSelectMode = false; selectedMsgIds.clear(); renderChatHistory();
-            };
-            if(btnDel) btnDel.onclick = () => {
-              if(selectedMsgIds.size === 0) return;
-              chatMessages = chatMessages.filter(m => !selectedMsgIds.has(m.id));
-              isSelectMode = false; selectedMsgIds.clear(); renderChatHistory();
-              autoSaveCollection();
-            };
-            if(btnCancel) btnCancel.onclick = () => { isSelectMode = false; selectedMsgIds.clear(); renderChatHistory(); };
-          } else {
+          // 给所有的 wrap 绑定长按事件来开启多选
+          if (!isSelectMode) {
             dom.chatHistory.querySelectorAll('.roche-lt-msg-wrap').forEach(el => {
               if(!el.dataset.id) return;
               addSafeLongPress(el, () => {
-                if(isGenerating || isCharTyping) return;
+                if(isGenerating || isCharTyping || isSelectMode) return;
                 isSelectMode = true;
                 selectedMsgIds.add(el.dataset.id);
-                renderChatHistory();
+                
+                dom.chatHistory.classList.add("select-mode");
+                dom.chatActionBar.style.display = "flex";
+                document.getElementById('lt-sel-count').textContent = `已选 ${selectedMsgIds.size} 条`;
+                
+                // 给当前被长按的元素勾选上
+                const cb = el.querySelector('.roche-lt-msg-check');
+                if (cb) cb.checked = true;
               });
             });
           }
 
-          if (isAtBottom) {
-             setTimeout(() => { scrollBox.scrollTop = scrollBox.scrollHeight; }, 10);
-          }
+          if (isAtBottom) { setTimeout(() => { scrollBox.scrollTop = scrollBox.scrollHeight; }, 10); }
         }
 
         dom.chatInput.onkeypress = (e) => {
@@ -772,7 +762,7 @@ window.RochePlugin.register({
         container.querySelector("#lt-chat-send-btn").onclick = async () => {
           const directText = dom.chatInput.value.trim();
           if(directText) { pendingUserMsgs.push(directText); dom.chatInput.value = ""; }
-          if(pendingUserMsgs.length === 0 || isCharTyping) return;
+          if(pendingUserMsgs.length === 0 || isCharTyping || isGenerating) return;
           
           const combinedMsg = pendingUserMsgs.join(" ");
           const ctx = await buildContext(dom.charSelect.value, null);
@@ -787,7 +777,6 @@ window.RochePlugin.register({
           
           try {
             const styleReq = settings.chatStyle === 'pure' ? '【重要要求】：请只输出你的对白，不要包含任何动作描写和心理活动。' : '可以包含动作和心理描写。';
-            // 发送最新的章节即可
             const activeContent = theaterChapters[currentChapterIdx]?.content || "";
             const sys = `你是${charName}，正在和${userName}一起看关于你们的小说片段。
             【当前阅读章节】${activeContent}
@@ -809,20 +798,22 @@ window.RochePlugin.register({
           } catch(e) { isCharTyping = false; roche.ui.toast("回复失败"); chatMessages.pop(); renderChatHistory(); }
         };
 
-        // [修复]：完全兼容倒序查找的重Roll逻辑
+        // [修复]：彻底清空最后一轮的所有 char 回复，并提高重Roll提示词优先级
         container.querySelector("#lt-chat-reroll-btn").onclick = () => {
           if (isCharTyping || isGenerating) return roche.ui.toast("AI正在忙碌...");
           
-          let lastCharIdx = -1;
+          let lastUserIdx = -1;
           for (let i = chatMessages.length - 1; i >= 0; i--) {
-            if (chatMessages[i].role === 'char') { lastCharIdx = i; break; }
+            if (chatMessages[i].role === 'user') { lastUserIdx = i; break; }
           }
-          if (lastCharIdx === -1) return roche.ui.toast("没有可重Roll的角色回复。");
+          
+          let deleteStartIdx = lastUserIdx === -1 ? 0 : lastUserIdx + 1;
+          if (deleteStartIdx >= chatMessages.length) return roche.ui.toast("没有可重Roll的角色回复。");
           
           dom.modalContent.innerHTML = `
             <h3 style="margin:0 0 15px 0;">重录角色回复</h3>
-            <p style="font-size:12px; color:var(--lt-text-sub);">将删除最后一条回复并重新生成。</p>
-            <textarea id="rr-hint" placeholder="可以填写重录理由或改进建议（比如'语气更温柔些'）。也可空着直接重roll..." style="height:90px;"></textarea>
+            <p style="font-size:12px; color:var(--lt-text-sub);">将删除上一轮所有回复气泡并根据指令重新生成。</p>
+            <textarea id="rr-hint" placeholder="填写强制重录指令（如'语气更温柔些'，AI会重点遵循该指令）。也可空着直接重roll..." style="height:90px;"></textarea>
             <div class="roche-lt-modal-actions" style="margin-top:15px;">
               <button id="rr-cancel" class="roche-lt-btn-outline">取消</button>
               <button id="rr-save" class="roche-lt-btn" style="padding: 8px 20px;">确认重Roll</button>
@@ -835,7 +826,8 @@ window.RochePlugin.register({
             const hint = document.getElementById('rr-hint').value.trim();
             dom.modalWrapper.classList.remove("show");
             
-            chatMessages.splice(lastCharIdx, 1);
+            // 删除最后一个 user 之后所有的 char 消息
+            chatMessages.splice(deleteStartIdx, chatMessages.length - deleteStartIdx);
             doReRoll(hint);
           };
         };
@@ -853,9 +845,18 @@ window.RochePlugin.register({
             【当前阅读章节】${activeContent}
             任务：自然回应用户的探讨，保持人设。`;
             if(settings.chatStyle === 'pure') sys += "【重要要求】：请只输出你的对白，不要包含动作描写和心理活动。";
-            if(hint) sys += `\n【用户给你的修改指导】：${hint}`;
             
             const apiMsgs = chatMessages.map(m => ({ role: m.role==='user'?'user':'assistant', content: m.content }));
+            
+            // 提高重 Roll 提示词优先级：放入强制性的 User 消息末尾
+            let reqMsg = "";
+            if (hint) {
+              reqMsg = `【最高强制系统指令】：针对上一轮你的回复，用户提出了不满和修改要求：“${hint}”。请你完全抛弃上一轮的答复，必须严格遵从该指导要求，重新生成你的回复。`;
+            } else {
+              reqMsg = `【强制系统指令】：请尝试使用完全不同的语气、角度或行动来重新回应我刚才的话。`;
+            }
+            apiMsgs.push({ role: "user", content: reqMsg });
+            
             const fullReply = await fetchAI(sys, apiMsgs);
             
             isCharTyping = false;
@@ -875,25 +876,25 @@ window.RochePlugin.register({
           }
         }
 
-        // --- 8. 下一章生成 (真正有效) ---
+        // --- 8. [修复] 下一章生成 ---
         const doNextChapter = async (userReq) => {
           if (isGenerating || isCharTyping) return;
           isGenerating = true; roche.ui.toast("执笔新章节中...");
           try {
             const ctx = await buildContext(dom.charSelect.value, dom.convSelect.value);
-            // 提取最近的两章作为前文背景，避免Token过长
             const recentContext = theaterChapters.slice(-2).map(c => `[${c.title}]：\n${c.content}`).join('\n\n');
-            const reqStr = userReq ? `用户对剧情走向的期望：${userReq}` : "请紧承上文，自然发展剧情，写出丰富生动的新一章。";
             
+            // 避免请求参数为空：将用户的要求或默认指令写在独立的 User 消息里，确保 API 稳定
             const sys = `你是一个优秀的小剧场作家。请接续前文，保持文风和人设一致。
             用户(${ctx.user.name})：${ctx.user.persona || ""}
             搭档(${ctx.char.name})：${ctx.char.persona || ""}
             ${ctx.extra}
             【近期前文内容】：
             ${recentContext}
-            任务要求：${reqStr}。直接输出新一章的正文。`;
+            任务要求：直接输出新一章的正文。`;
 
-            const newText = await fetchAI(sys, []);
+            const reqContent = userReq ? `【指令】：用户期望下一章的剧情走向：${userReq}` : "【指令】：请紧承上文，自然发展剧情，写出丰富生动的新一章。";
+            const newText = await fetchAI(sys, [{ role: "user", content: reqContent }]);
             
             const newChapterTitle = `第${theaterChapters.length + 1}章`;
             theaterChapters.push({ title: newChapterTitle, content: newText });
@@ -905,7 +906,7 @@ window.RochePlugin.register({
             updateTOCUI();
             renderChatHistory();
             autoSaveCollection();
-          } catch(e) { roche.ui.toast("续写下一章失败：" + e.message); }
+          } catch(e) { roche.ui.toast("续写失败：" + e.message); }
           finally { isGenerating = false; }
         };
         
@@ -928,7 +929,7 @@ window.RochePlugin.register({
             const sys = `你是一个记忆整理助手。请根据以下小剧场内容和观后的聊天探讨记录，生成一段100字左右的【事实陈述（第三人称视角）】。
             【小剧场当前章摘要】：${activeContent.substring(0, 300)}...
             【观后讨论】：\n${chatLog}
-            要求：务必客观且具体地写出“双方面对这个小剧场剧情，分别表达了什么具体的感想或做出了什么具体的探讨”，直接输出总结内容。`;
+            要求：客观具体地写出“双方面对这个小剧场剧情，分别表达了什么具体的感想或探讨”，直接输出总结内容。`;
             
             const summaryText = await fetchAI(sys, [{role: "user", content: "开始总结。"}]);
             
@@ -944,11 +945,7 @@ window.RochePlugin.register({
             `;
             dom.modalWrapper.classList.add("show");
             document.getElementById('sum-close').onclick = () => dom.modalWrapper.classList.remove("show");
-            
-            document.getElementById('sum-copy').onclick = async () => {
-               try { await navigator.clipboard.writeText(document.getElementById('sum-text').value); roche.ui.toast("已复制！"); } 
-               catch(e) { roche.ui.toast("复制失败。"); }
-            };
+            document.getElementById('sum-copy').onclick = async () => { try { await navigator.clipboard.writeText(document.getElementById('sum-text').value); roche.ui.toast("已复制！"); } catch(e) { roche.ui.toast("复制失败。"); } };
             
             document.getElementById('sum-save').onclick = async () => {
               const finalSummary = document.getElementById('sum-text').value.trim();
@@ -963,7 +960,7 @@ window.RochePlugin.register({
                   where: "小剧场应用",
                   source: "little-theater"
                 });
-                roche.ui.toast("已成功写入该角色的长期事实记忆！");
+                roche.ui.toast("已成功写入事实记忆！");
                 dom.modalWrapper.classList.remove("show");
               } catch(e) { roche.ui.toast("写入失败：" + e.message); }
             };
@@ -1014,7 +1011,6 @@ window.RochePlugin.register({
               const col = savedCollections.find(c => c.id === el.dataset.id);
               currentCollectionId = col.id;
               
-              // 兼容老版本收藏数据格式
               if (col.chapters && col.chapters.length > 0) {
                  theaterChapters = JSON.parse(JSON.stringify(col.chapters));
               } else {
@@ -1024,8 +1020,7 @@ window.RochePlugin.register({
               
               chatMessages = [...col.chatHistory];
               pendingUserMsgs = [];
-              isSelectMode = false;
-              selectedMsgIds.clear();
+              quitSelectMode();
               
               dom.vignetteTitle.textContent = col.title;
               dom.charSelect.value = col.charId; 
@@ -1061,3 +1056,5 @@ window.RochePlugin.register({
     }
   ]
 });
+// ==================== 第二部分代码结束 ====================
+
