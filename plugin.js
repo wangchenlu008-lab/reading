@@ -972,3 +972,4 @@ window.RochePlugin.register({
       }
     }
   ]
+});
