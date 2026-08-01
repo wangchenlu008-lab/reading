@@ -4,7 +4,7 @@
   "version": "1.2.0",
   "description": "基于莫兰迪美学的沉浸式小剧场生成与共读插件。已增强：精细化记忆挂载、精确世界书选择、剧场总结与主记忆写入功能。",
   "author": "Roche Creator",
-  "entry": "https://raw.githubusercontent.com/用户名/仓库名/main/plugin.js",
+  "entry": "https://raw.githubusercontent.com/wangchenlu008-lab/reading/main/plugin.js",
   "hash": "",
   "permissions": [
     "persona:read",
