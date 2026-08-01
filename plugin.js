@@ -10,7 +10,6 @@ window.RochePlugin.register({
       async mount(container, roche) {
         
         // --- 1. 样式定义 (支持 CSS 变量换肤) ---
-        // (完全保留原版样式，仅在末尾新增记忆设置按钮和复选框样式)
         const styleId = "style-roche-little-theater";
         if (!document.getElementById(styleId)) {
           const style = document.createElement("style");
@@ -55,7 +54,6 @@ window.RochePlugin.register({
             .roche-lt-select-wrapper select { width: 100%; appearance: none; -webkit-appearance: none; background-color: var(--lt-input-bg); border: 1px solid transparent; border-radius: 20px; padding: 12px 35px 12px 18px; font-size: 14px; color: var(--lt-text-main); outline: none; transition: 0.3s; }
             .roche-lt-select-wrapper::after { content: "▼"; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--lt-text-sub); pointer-events: none; }
             
-            /* 新增：记忆配置小按钮 */
             .roche-lt-icon-btn { background: var(--lt-input-bg); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--lt-text-main); font-size: 18px; transition: 0.2s; flex-shrink: 0; }
             .roche-lt-icon-btn:hover { background: var(--lt-border); }
 
@@ -96,10 +94,12 @@ window.RochePlugin.register({
             .roche-lt-vignette-content { font-size: 15px; line-height: 1.8; color: var(--lt-text-main); white-space: pre-wrap; padding: 15px; background: var(--lt-panel); border-radius: 16px; }
             
             .roche-lt-chat-box { background: var(--lt-panel); border-radius: 16px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; margin-bottom: 10px; }
-            .roche-lt-chat-history { display: flex; flex-direction: column; gap: 12px; max-height: 250px; overflow-y: auto; }
+            .roche-lt-chat-history { display: flex; flex-direction: column; gap: 12px; max-height: 250px; overflow-y: auto; position: relative; }
             
+            .roche-lt-msg-wrap { display: flex; align-items: flex-start; gap: 8px; width: 100%; transition: 0.2s; user-select: none; -webkit-user-select: none; }
+            .roche-lt-msg-check { flex-shrink: 0; margin-top: 15px; width: 18px; height: 18px; accent-color: var(--lt-primary); }
             .roche-lt-msg { display: flex; flex-direction: column; max-width: 85%; animation: fadeIn 0.3s; }
-            .roche-lt-msg.user { align-self: flex-end; align-items: flex-end; }
+            .roche-lt-msg.user { align-self: flex-end; align-items: flex-end; margin-left: auto; }
             .roche-lt-msg.char { align-self: flex-start; align-items: flex-start; }
             .roche-lt-msg-name { font-size: 11px; color: var(--lt-text-sub); margin-bottom: 4px; padding: 0 4px; }
             .roche-lt-msg-bubble { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; color: var(--lt-text-main); word-break: break-all; }
@@ -108,9 +108,14 @@ window.RochePlugin.register({
             .roche-lt-msg.pending { opacity: 0.6; }
             .roche-lt-msg.pending .roche-lt-msg-bubble { border: 1px dashed var(--lt-primary); }
 
+            /* 多选模式下样式调整 */
+            .roche-lt-chat-history.select-mode .roche-lt-msg { max-width: 100%; }
+            .roche-lt-chat-history.select-mode .roche-lt-msg.user { align-self: flex-start; align-items: flex-start; margin-left: 0; }
+            .roche-lt-chat-actions-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; padding: 10px; background: var(--lt-input-bg); border-radius: 12px; margin-bottom: 10px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
             .roche-lt-input-group { display: flex; flex-direction: column; gap: 10px; }
-            .roche-lt-input-row { display: flex; gap: 10px; }
-            .roche-lt-input-row input { flex: 1; padding: 12px 16px; border: 1px solid var(--lt-border); border-radius: 20px; outline: none; background: var(--lt-input-bg); font-size: 14px; color: var(--lt-text-main); transition: 0.2s; }
+            .roche-lt-input-row { display: flex; gap: 8px; align-items: center; }
+            .roche-lt-input-row input { flex: 1; padding: 12px 16px; border: 1px solid var(--lt-border); border-radius: 20px; outline: none; background: var(--lt-input-bg); font-size: 14px; color: var(--lt-text-main); transition: 0.2s; min-width: 0; }
             .roche-lt-input-row input:focus { border-color: var(--lt-primary); }
             .roche-lt-chat-hint { font-size: 11px; color: var(--lt-text-sub); text-align: center; }
 
@@ -122,7 +127,7 @@ window.RochePlugin.register({
             .roche-lt-modal-bg.show .roche-lt-modal { transform: translateY(0); }
             
             .roche-lt-modal label { font-size: 13px; color: var(--lt-text-main); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-            .roche-lt-modal input[type="text"], .roche-lt-modal input[type="password"], .roche-lt-modal input[type="number"], .roche-lt-modal textarea, .roche-lt-modal select { width: 100%; margin-bottom: 16px; padding: 12px; border: 1px solid var(--lt-border); border-radius: 12px; background: var(--lt-input-bg); font-size: 14px; color: var(--lt-text-main); outline: none; }
+            .roche-lt-modal input[type="text"], .roche-lt-modal input[type="password"], .roche-lt-modal input[type="number"], .roche-lt-modal textarea, .roche-lt-modal select { width: 100%; margin-bottom: 16px; padding: 12px; border: 1px solid var(--lt-border); border-radius: 12px; background: var(--lt-input-bg); font-size: 14px; color: var(--lt-text-main); outline: none; box-sizing: border-box; }
             .roche-lt-modal textarea { height: 90px; resize: none; font-family: inherit; }
             .roche-lt-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
             .roche-lt-delete-text { color: #d98888; font-size: 13px; align-self: center; cursor: pointer; margin-right: auto; }
@@ -144,31 +149,70 @@ window.RochePlugin.register({
         
         let settings = (await roche.storage.get("lt_settings")) || {
           theme: "default",
-          wbCatId: "",     // [增强] 世界书分类ID
-          wbEntryId: "",   // [增强] 世界书具体词条ID
+          wbCatIds: [],      // [增强] 支持多选世界书分类
           apiBase: "", 
           apiKey: "", 
           chatStyle: "mixed",
-          // [增强] 记忆挂载精细化设置
           memIncludeCore: true,
           memIncludeFacts: true,
           memIncludeChat: true,
           memChatLimit: 50
         };
 
+        // 平滑兼容旧版配置
+        if(settings.wbCatId && !settings.wbCatIds) settings.wbCatIds = [settings.wbCatId];
+        if(!settings.wbCatIds) settings.wbCatIds = [];
+
+        // [增强] 专属世界书设定存储
+        let customWorldbooks = (await roche.storage.get("lt_custom_wb")) || [];
+
         let characters = await roche.character.list();
         let conversations = await roche.conversation.list({ isGroup: false });
-        let worldbookCategories = await roche.worldbook.list(); // [修改] API规定list()返回分类
+        let worldbookCategories = await roche.worldbook.list(); 
         
         let activePrompt = null;
         let vignetteText = "";
-        let chatMessages = [];
+        let chatMessages = []; // { id, role, name, content }
         let pendingUserMsgs = [];
         let isGenerating = false;
         let currentCollectionId = null; 
         
+        // 共读多选状态
+        let isSelectMode = false;
+        let selectedMsgIds = new Set();
+        
         let searchKeyword = "";
         let activeCategory = "全部";
+
+        // 长按手势通用辅助函数 (防卡死与滑动阻断)
+        function addLongPress(el, onLongPress, onClick) {
+          let timer; let isDrag = false; let startX, startY;
+          const start = (e) => {
+            isDrag = false;
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            startX = clientX; startY = clientY;
+            timer = setTimeout(() => { timer = null; if(!isDrag) onLongPress(); }, 600);
+          };
+          const move = (e) => {
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            if(Math.abs(clientX - startX) > 10 || Math.abs(clientY - startY) > 10) {
+              isDrag = true; if(timer) clearTimeout(timer);
+            }
+          };
+          const end = (e) => {
+            if(timer) { clearTimeout(timer); if(!isDrag && onClick) onClick(e); }
+          };
+          el.addEventListener('touchstart', start, {passive: true});
+          el.addEventListener('touchmove', move, {passive: true});
+          el.addEventListener('touchend', end);
+          el.addEventListener('touchcancel', end);
+          el.addEventListener('mousedown', start);
+          el.addEventListener('mousemove', move);
+          el.addEventListener('mouseup', end);
+          el.addEventListener('mouseleave', end);
+        }
 
         // --- 3. 初始结构渲染 ---
         container.innerHTML = `
@@ -201,7 +245,6 @@ window.RochePlugin.register({
                     ${conversations.map(c => `<option value="${c.id}">${c.name || c.title}</option>`).join('')}
                   </select>
                 </div>
-                <!-- 新增：精细化记忆设置按钮 -->
                 <button id="lt-mem-config-btn" class="roche-lt-icon-btn" title="记忆挂载设置">🧠</button>
               </div>
 
@@ -226,7 +269,6 @@ window.RochePlugin.register({
               <div class="roche-lt-theater-header">
                 <span id="lt-vignette-title" class="roche-lt-theater-title">剧场内容</span>
                 <div class="roche-lt-theater-tools">
-                  <!-- 新增：总结与主记忆导出功能 -->
                   <button id="lt-summary-btn" class="roche-lt-btn-outline" style="border-color:#b5929c; color:#b5929c;">📝 总结收录</button>
                   <button id="lt-save-theater-btn" class="roche-lt-btn-outline" style="border:none;">保存至收藏</button>
                   <button id="lt-fullscreen-btn" class="roche-lt-btn-outline">全屏</button>
@@ -246,8 +288,10 @@ window.RochePlugin.register({
                   <div id="lt-chat-history" class="roche-lt-chat-history"></div>
                   
                   <div class="roche-lt-input-group">
-                    <div class="roche-lt-chat-hint">提示：按回车(Enter)缓存多条消息，点击发送一起发给角色</div>
+                    <div class="roche-lt-chat-hint">提示：长按消息可多选撤回/引用。按回车缓存多条探讨。</div>
                     <div class="roche-lt-input-row">
+                      <!-- 新增：重roll小按钮 -->
+                      <button id="lt-chat-reroll-btn" class="roche-lt-icon-btn" style="width:42px;height:42px;" title="重Roll最后回复">🎲</button>
                       <input type="text" id="lt-chat-input" placeholder="输入探讨内容，按回车缓存...">
                       <button id="lt-chat-send-btn" class="roche-lt-btn" style="padding: 10px 18px; border-radius: 18px;">发送</button>
                     </div>
@@ -326,17 +370,8 @@ window.RochePlugin.register({
 
           dom.promptScroll.querySelectorAll('.roche-lt-prompt-item').forEach(el => {
             const pId = el.dataset.id;
-            let timer, startX, startY, isDrag = false;
-            const startPress = () => timer = setTimeout(() => openPromptModal(pId), 600);
-            const cancelPress = () => clearTimeout(timer);
-            el.addEventListener('touchstart', (e) => { isDrag=false; startX=e.touches[0].clientX; startY=e.touches[0].clientY; startPress(); }, {passive:true});
-            el.addEventListener('touchmove', (e) => { if(Math.abs(e.touches[0].clientX-startX)>10) { isDrag=true; cancelPress(); } }, {passive:true});
-            el.addEventListener('touchend', () => { cancelPress(); if(!isDrag) selectPrompt(pId); });
-            el.addEventListener('touchcancel', cancelPress);
-            el.addEventListener('mousedown', (e) => { isDrag=false; startX=e.clientX; startPress(); });
-            el.addEventListener('mousemove', (e) => { if(Math.abs(e.clientX-startX)>5) { isDrag=true; cancelPress(); } });
-            el.addEventListener('mouseup', () => { cancelPress(); if(!isDrag) selectPrompt(pId); });
-            el.addEventListener('mouseleave', cancelPress);
+            // 使用统一的长按逻辑
+            addLongPress(el, () => openPromptModal(pId), () => selectPrompt(pId));
           });
         }
         dom.searchInput.oninput = (e) => { searchKeyword = e.target.value; updatePromptUI(); };
@@ -382,7 +417,6 @@ window.RochePlugin.register({
         }
         container.querySelector("#lt-add-prompt-btn").onclick = () => openPromptModal();
 
-        // [增强1]：记忆设置模态框
         container.querySelector("#lt-mem-config-btn").onclick = () => {
           dom.modalContent.innerHTML = `
             <h3 style="margin:0 0 15px 0;">记忆挂载偏好 (当前角色)</h3>
@@ -418,77 +452,119 @@ window.RochePlugin.register({
           };
         };
 
-        // [增强2]：世界书精确选择
-        container.querySelector("#lt-settings-btn").onclick = async () => {
-          dom.modalContent.innerHTML = `
-            <h3 style="margin:0 0 15px 0;">剧场全局设置</h3>
+        // [增强]：世界书精确多选与专属设定
+        let currentSettingsView = 'main'; 
+        let editCustomWbId = null;
+
+        function renderSettingsModal() {
+          if (currentSettingsView === 'main') {
+            dom.modalContent.innerHTML = `
+              <h3 style="margin:0 0 15px 0;">剧场全局设置</h3>
+              <span style="font-size:12px; color:var(--lt-text-sub);">UI 主题</span>
+              <select id="s-theme">
+                <option value="default" ${settings.theme==='default'?'selected':''}>莫兰迪浅蓝 (默认)</option>
+                <option value="pink" ${settings.theme==='pink'?'selected':''}>樱花粉</option>
+                <option value="dark" ${settings.theme==='dark'?'selected':''}>暗夜蓝 (深色)</option>
+              </select>
+              
+              <span style="font-size:12px; color:var(--lt-text-sub);">角色对话模式</span>
+              <select id="s-style">
+                <option value="mixed" ${settings.chatStyle==='mixed'?'selected':''}>对话 + 动作/心理描写</option>
+                <option value="pure" ${settings.chatStyle==='pure'?'selected':''}>纯对话 (仅口语)</option>
+              </select>
+
+              <div style="font-size:13px; font-weight:600; margin-top:10px; margin-bottom:8px;">1. 主线世界书挂载 (多选)</div>
+              <div style="max-height: 90px; overflow-y: auto; border: 1px solid var(--lt-border); border-radius: 8px; padding: 8px; margin-bottom: 15px; background: var(--lt-input-bg);">
+                ${worldbookCategories.map(w => `
+                  <label style="cursor:pointer; display:flex; align-items:center; margin-bottom:5px; font-size:13px; gap:8px;">
+                    <input type="checkbox" class="c-wb-cat" value="${w.id}" ${settings.wbCatIds?.includes(w.id)?'checked':''}> <span>${w.name}</span>
+                  </label>
+                `).join('')}
+              </div>
+
+              <div style="font-size:13px; font-weight:600; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>2. 专属世界书 (独立设定)</span>
+                <span id="s-wb-add" style="color:var(--lt-primary); cursor:pointer; font-size:12px;">+ 新增设定</span>
+              </div>
+              <div id="s-wb-list" style="max-height: 100px; overflow-y: auto; border: 1px solid var(--lt-border); border-radius: 8px; padding: 8px; margin-bottom: 15px; background: var(--lt-input-bg);">
+              </div>
+
+              <div class="roche-lt-modal-actions">
+                <button id="s-close" class="roche-lt-btn-outline">取消</button>
+                <button id="s-save" class="roche-lt-btn" style="padding: 8px 20px;">保存</button>
+              </div>
+            `;
+
+            const list = document.getElementById('s-wb-list');
+            list.innerHTML = customWorldbooks.length === 0 ? '<div style="color:var(--lt-text-sub); text-align:center; font-size:12px; margin-top:5px;">暂无专属设定</div>' : customWorldbooks.map(c => `
+              <div style="display:flex; justify-content:space-between; align-items:center; background:var(--lt-panel); padding:8px; margin-bottom:6px; border-radius:6px; border:1px solid var(--lt-border);">
+                <span style="font-weight:600; font-size:13px; color:var(--lt-text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</span>
+                <div style="flex-shrink:0;">
+                  <span class="c-wb-edit" data-id="${c.id}" style="color:var(--lt-primary); cursor:pointer; margin-right:10px; font-size:12px;">编辑</span>
+                  <span class="c-wb-del" data-id="${c.id}" style="color:#d98888; cursor:pointer; font-size:12px;">删除</span>
+                </div>
+              </div>
+            `).join('');
+
+            list.querySelectorAll('.c-wb-edit').forEach(el => {
+              el.onclick = () => { currentSettingsView = 'edit-wb'; editCustomWbId = el.dataset.id; renderSettingsModal(); };
+            });
+            list.querySelectorAll('.c-wb-del').forEach(el => {
+              el.onclick = async () => {
+                customWorldbooks = customWorldbooks.filter(c => c.id !== el.dataset.id);
+                await roche.storage.set("lt_custom_wb", customWorldbooks);
+                renderSettingsModal();
+              };
+            });
             
-            <span style="font-size:12px; color:var(--lt-text-sub);">UI 主题</span>
-            <select id="s-theme">
-              <option value="default" ${settings.theme==='default'?'selected':''}>莫兰迪浅蓝 (默认)</option>
-              <option value="pink" ${settings.theme==='pink'?'selected':''}>樱花粉</option>
-              <option value="dark" ${settings.theme==='dark'?'selected':''}>暗夜蓝 (深色)</option>
-            </select>
-            
-            <span style="font-size:12px; color:var(--lt-text-sub);">挂载世界书分类</span>
-            <select id="s-wb-cat">
-              <option value="">不挂载 / 忽略世界书</option>
-              ${worldbookCategories.map(w => `<option value="${w.id}" ${settings.wbCatId===w.id?'selected':''}>${w.name}</option>`).join('')}
-            </select>
-            
-            <span style="font-size:12px; color:var(--lt-text-sub);">挂载具体词条 (需先选分类)</span>
-            <select id="s-wb-entry" ${!settings.wbCatId ? 'disabled' : ''}>
-              <option value="all">挂载该分类下所有词条</option>
-            </select>
-            
-            <span style="font-size:12px; color:var(--lt-text-sub);">角色对话模式</span>
-            <select id="s-style">
-              <option value="mixed" ${settings.chatStyle==='mixed'?'selected':''}>对话 + 动作/心理描写</option>
-              <option value="pure" ${settings.chatStyle==='pure'?'selected':''}>纯对话 (仅口语)</option>
-            </select>
-            
-            <div class="roche-lt-modal-actions">
-              <button id="s-close" class="roche-lt-btn-outline">取消</button>
-              <button id="s-save" class="roche-lt-btn" style="padding: 8px 20px;">保存</button>
-            </div>
-          `;
+            document.getElementById('s-wb-add').onclick = () => { currentSettingsView = 'edit-wb'; editCustomWbId = null; renderSettingsModal(); };
+
+            document.getElementById('s-close').onclick = () => dom.modalWrapper.classList.remove("show");
+            document.getElementById('s-save').onclick = async () => {
+              settings.theme = document.getElementById('s-theme').value;
+              settings.chatStyle = document.getElementById('s-style').value;
+              const checkedCats = Array.from(document.querySelectorAll('.c-wb-cat:checked')).map(cb => cb.value);
+              settings.wbCatIds = checkedCats;
+
+              await roche.storage.set("lt_settings", settings);
+              applyTheme();
+              dom.modalWrapper.classList.remove("show");
+              roche.ui.toast("设置已保存");
+            };
+
+          } else if (currentSettingsView === 'edit-wb') {
+            const cWb = editCustomWbId ? customWorldbooks.find(c => c.id === editCustomWbId) : { name:'', content:'' };
+            dom.modalContent.innerHTML = `
+              <h3 style="margin:0 0 15px 0;">${editCustomWbId ? '编辑' : '新增'}专属设定</h3>
+              <input type="text" id="ew-name" placeholder="设定名称 (如：小剧场背景、特殊称呼)" value="${cWb.name}">
+              <textarea id="ew-content" placeholder="填写具体的设定内容，这部分内容会在剧场执笔和探讨时提供给 AI..." style="height:120px;">${cWb.content}</textarea>
+              
+              <div class="roche-lt-modal-actions" style="margin-top: 15px;">
+                <button id="ew-cancel" class="roche-lt-btn-outline">返回</button>
+                <button id="ew-save" class="roche-lt-btn" style="padding: 8px 20px;">保存设定</button>
+              </div>
+            `;
+            document.getElementById('ew-cancel').onclick = () => { currentSettingsView = 'main'; renderSettingsModal(); };
+            document.getElementById('ew-save').onclick = async () => {
+              const n = document.getElementById('ew-name').value.trim();
+              const ct = document.getElementById('ew-content').value.trim();
+              if(!n || !ct) return roche.ui.toast("名称和内容不能为空");
+              if(editCustomWbId) {
+                Object.assign(customWorldbooks.find(c => c.id === editCustomWbId), { name: n, content: ct });
+              } else {
+                customWorldbooks.unshift({ id: crypto.randomUUID(), name: n, content: ct });
+              }
+              await roche.storage.set("lt_custom_wb", customWorldbooks);
+              currentSettingsView = 'main';
+              renderSettingsModal();
+            };
+          }
+        }
+
+        container.querySelector("#lt-settings-btn").onclick = () => {
+          currentSettingsView = 'main';
           dom.modalWrapper.classList.add("show");
-
-          // 动态加载分类下的词条
-          const catSelect = document.getElementById('s-wb-cat');
-          const entrySelect = document.getElementById('s-wb-entry');
-          
-          const loadEntries = async (categoryId, selectedEntryId) => {
-            entrySelect.innerHTML = `<option value="all">挂载该分类下所有词条</option>`;
-            if(!categoryId) { entrySelect.disabled = true; return; }
-            entrySelect.disabled = false;
-            try {
-              const entries = await roche.worldbook.getEntries({ categoryId, scope: "global" });
-              entries.forEach(e => {
-                const opt = document.createElement('option');
-                opt.value = e.id;
-                opt.textContent = e.keys ? (e.keys.join(', ') || e.id) : e.id; 
-                if(e.id === selectedEntryId) opt.selected = true;
-                entrySelect.appendChild(opt);
-              });
-            } catch(e) { console.error("加载词条失败", e); }
-          };
-
-          if(settings.wbCatId) await loadEntries(settings.wbCatId, settings.wbEntryId);
-
-          catSelect.onchange = (e) => loadEntries(e.target.value, null);
-          
-          document.getElementById('s-close').onclick = () => dom.modalWrapper.classList.remove("show");
-          document.getElementById('s-save').onclick = async () => {
-            settings.theme = document.getElementById('s-theme').value;
-            settings.wbCatId = document.getElementById('s-wb-cat').value;
-            settings.wbEntryId = document.getElementById('s-wb-entry').value;
-            settings.chatStyle = document.getElementById('s-style').value;
-            await roche.storage.set("lt_settings", settings);
-            applyTheme();
-            dom.modalWrapper.classList.remove("show");
-            roche.ui.toast("设置已保存");
-          };
+          renderSettingsModal();
         };
 
         // --- 7. 独立API 与 AI核心逻辑 (已增强上下文构建) ---
@@ -515,16 +591,12 @@ window.RochePlugin.register({
           const char = await roche.character.get(charId);
           let extra = "";
           
-          // [修复]：精细化处理挂载的记忆
           if (convId) {
             const lt = await roche.memory.getLongTerm({ conversationId: convId, limit: 100 });
-            
-            if (settings.memIncludeCore && lt.core && lt.core.summary) {
-              extra += `【核心设定与记忆】：${lt.core.summary}\n`;
-            }
+            if (settings.memIncludeCore && lt.core && lt.core.summary) extra += `【核心设定】：${lt.core.summary}\n`;
             if (settings.memIncludeFacts && lt.facts && lt.facts.length > 0) {
               const factLines = lt.facts.map(f => f.summaryText || f.action || f.text).filter(Boolean);
-              if (factLines.length > 0) extra += `【既往事实/经历】：${factLines.join("；")}\n`;
+              if (factLines.length > 0) extra += `【既往经历】：${factLines.join("；")}\n`;
             }
             if (settings.memIncludeChat) {
               const limit = settings.memChatLimit || 50;
@@ -536,20 +608,25 @@ window.RochePlugin.register({
             }
           }
 
-          // [修复]：精确加载世界书
-          if (settings.wbCatId) {
-            try {
-              const entries = await roche.worldbook.getEntries({ categoryId: settings.wbCatId, scope: "global" });
-              let targetEntries = entries;
-              if (settings.wbEntryId && settings.wbEntryId !== 'all') {
-                targetEntries = entries.filter(e => e.id === settings.wbEntryId);
-              }
-              if (targetEntries.length > 0) {
-                const wbContent = targetEntries.map(e => e.content || e.text || "").filter(Boolean).join("；\n");
-                extra += `【世界观设定】：\n${wbContent}\n`;
-              }
-            } catch(e) { console.warn("世界书加载失败", e); }
+          // 多选官方世界书挂载
+          if (settings.wbCatIds && settings.wbCatIds.length > 0) {
+            let wbContentArr = [];
+            for (let catId of settings.wbCatIds) {
+              try {
+                const entries = await roche.worldbook.getEntries({ categoryId: catId, scope: "global" });
+                wbContentArr.push(...entries.map(e => e.content || e.text || "").filter(Boolean));
+              } catch(e) { console.warn("分类读取失败", catId); }
+            }
+            if (wbContentArr.length > 0) {
+              extra += `【主游戏设定】：\n${wbContentArr.join("；\n")}\n`;
+            }
           }
+          
+          // 专属设定挂载
+          if (customWorldbooks.length > 0) {
+             extra += `【专属小剧场设定】：\n${customWorldbooks.map(c => `${c.name}：${c.content}`).join("；\n")}\n`;
+          }
+
           return { user: userP, char, extra };
         }
 
@@ -573,6 +650,8 @@ window.RochePlugin.register({
             vignetteText = await fetchAI(sys, [{ role: "user", content: "请开始编写。" }]);
             chatMessages = [];
             pendingUserMsgs = [];
+            isSelectMode = false;
+            selectedMsgIds.clear();
             currentCollectionId = null;
             
             dom.vignetteTitle.textContent = activePrompt.title;
@@ -583,22 +662,97 @@ window.RochePlugin.register({
           finally { isGenerating = false; dom.generateBtn.textContent = "执笔生成"; }
         };
 
-        // --- 8. 聊天与总结 ---
+        // --- 8. 聊天、撤回引用多选、重Roll与总结 ---
         function renderChatHistory() {
-          let html = chatMessages.map(m => `
-            <div class="roche-lt-msg ${m.role}">
-              <div class="roche-lt-msg-name">${m.name}</div>
-              <div class="roche-lt-msg-bubble">${m.content}</div>
-            </div>
-          `).join('');
-          html += pendingUserMsgs.map(text => `
-            <div class="roche-lt-msg user pending">
-              <div class="roche-lt-msg-name">我 (未发送)</div>
-              <div class="roche-lt-msg-bubble">${text}</div>
-            </div>
-          `).join('');
+          const scrollBox = dom.chatHistory;
+          const isAtBottom = scrollBox.scrollHeight - scrollBox.scrollTop <= scrollBox.clientHeight + 10;
+          
+          const containerClass = isSelectMode ? "roche-lt-chat-history select-mode" : "roche-lt-chat-history";
+          let html = '';
+          
+          if (isSelectMode) {
+            html += `
+              <div class="roche-lt-chat-actions-bar">
+                <span style="font-size:12px; font-weight:600;">已选 ${selectedMsgIds.size} 条</span>
+                <div style="display:flex; gap:8px;">
+                  <button id="lt-sel-quote" class="roche-lt-btn-outline" style="padding:4px 8px;">引用</button>
+                  <button id="lt-sel-del" class="roche-lt-btn-outline" style="padding:4px 8px; border-color:#d98888; color:#d98888;">撤回/删除</button>
+                  <button id="lt-sel-cancel" class="roche-lt-btn-outline" style="padding:4px 8px; border:none; background:transparent;">取消</button>
+                </div>
+              </div>
+            `;
+          }
+
+          chatMessages.forEach(m => {
+            const checked = selectedMsgIds.has(m.id) ? "checked" : "";
+            html += `
+              <div class="roche-lt-msg-wrap" data-id="${m.id}">
+                ${isSelectMode ? `<input type="checkbox" class="roche-lt-msg-check" ${checked}>` : ''}
+                <div class="roche-lt-msg ${m.role}">
+                  <div class="roche-lt-msg-name">${m.name}</div>
+                  <div class="roche-lt-msg-bubble">${m.content}</div>
+                </div>
+              </div>
+            `;
+          });
+          
+          pendingUserMsgs.forEach(text => {
+             html += `
+               <div class="roche-lt-msg-wrap">
+                 ${isSelectMode ? `<div style="width:18px;"></div>` : ''}
+                 <div class="roche-lt-msg user pending">
+                   <div class="roche-lt-msg-name">我 (未发送)</div>
+                   <div class="roche-lt-msg-bubble">${text}</div>
+                 </div>
+               </div>
+             `;
+          });
+
+          dom.chatHistory.className = containerClass;
           dom.chatHistory.innerHTML = html;
-          dom.chatHistory.scrollTop = dom.chatHistory.scrollHeight;
+          
+          if (isSelectMode) {
+            dom.chatHistory.querySelectorAll('.roche-lt-msg-check').forEach(cb => {
+              cb.onchange = (e) => {
+                const id = e.target.closest('.roche-lt-msg-wrap').dataset.id;
+                if(e.target.checked) selectedMsgIds.add(id); else selectedMsgIds.delete(id);
+                renderChatHistory(); // 刷新数字
+              };
+            });
+            const btnQuote = document.getElementById('lt-sel-quote');
+            const btnDel = document.getElementById('lt-sel-del');
+            const btnCancel = document.getElementById('lt-sel-cancel');
+            
+            if(btnQuote) btnQuote.onclick = () => {
+              if(selectedMsgIds.size === 0) return;
+              const msgs = chatMessages.filter(m => selectedMsgIds.has(m.id));
+              const quoteText = msgs.map(m => `> ${m.name}: ${m.content}`).join("\n");
+              dom.chatInput.value = quoteText + "\n" + dom.chatInput.value;
+              isSelectMode = false; selectedMsgIds.clear(); renderChatHistory();
+            };
+            if(btnDel) btnDel.onclick = () => {
+              if(selectedMsgIds.size === 0) return;
+              chatMessages = chatMessages.filter(m => !selectedMsgIds.has(m.id));
+              isSelectMode = false; selectedMsgIds.clear(); renderChatHistory();
+              autoSaveCollection();
+            };
+            if(btnCancel) btnCancel.onclick = () => { isSelectMode = false; selectedMsgIds.clear(); renderChatHistory(); };
+          } else {
+            dom.chatHistory.querySelectorAll('.roche-lt-msg-wrap').forEach(el => {
+              if(!el.dataset.id) return;
+              addLongPress(el, () => {
+                if(isGenerating) return;
+                isSelectMode = true;
+                selectedMsgIds.add(el.dataset.id);
+                renderChatHistory();
+              });
+            });
+          }
+
+          if (isAtBottom) {
+             // 防止卡死：只有在用户不往上滑看历史记录时，渲染后才强制跳到底部
+             setTimeout(() => { scrollBox.scrollTop = scrollBox.scrollHeight; }, 10);
+          }
         }
 
         dom.chatInput.onkeypress = (e) => {
@@ -618,7 +772,7 @@ window.RochePlugin.register({
           const userName = ctx.user.name || "我";
           const charName = ctx.char.name || "角色";
           
-          chatMessages.push({ role: "user", name: userName, content: combinedMsg });
+          chatMessages.push({ id: crypto.randomUUID(), role: "user", name: userName, content: combinedMsg });
           pendingUserMsgs = [];
           renderChatHistory();
           
@@ -635,7 +789,7 @@ window.RochePlugin.register({
             for (let s of sentences) {
               let text = s.trim();
               if(!text) continue;
-              chatMessages.push({ role: "char", name: charName, content: text });
+              chatMessages.push({ id: crypto.randomUUID(), role: "char", name: charName, content: text });
               renderChatHistory();
               await new Promise(r => setTimeout(r, 600)); 
             }
@@ -643,6 +797,65 @@ window.RochePlugin.register({
           } catch(e) { roche.ui.toast("回复失败"); chatMessages.pop(); renderChatHistory(); }
           finally { isGenerating = false; }
         };
+
+        // [增强]：重roll最后一条回复
+        container.querySelector("#lt-chat-reroll-btn").onclick = () => {
+          if (isGenerating) return roche.ui.toast("AI正在忙碌...");
+          const lastCharIdx = chatMessages.findLastIndex(m => m.role === 'char');
+          if (lastCharIdx === -1) return roche.ui.toast("没有可重Roll的角色回复。");
+          
+          dom.modalContent.innerHTML = `
+            <h3 style="margin:0 0 15px 0;">重录角色回复</h3>
+            <p style="font-size:12px; color:var(--lt-text-sub);">将删除最后一条回复并重新生成。</p>
+            <textarea id="rr-hint" placeholder="可以填写重录理由或改进建议（比如'语气更温柔些'）。也可空着直接重roll..." style="height:90px;"></textarea>
+            <div class="roche-lt-modal-actions" style="margin-top:15px;">
+              <button id="rr-cancel" class="roche-lt-btn-outline">取消</button>
+              <button id="rr-save" class="roche-lt-btn" style="padding: 8px 20px;">确认重Roll</button>
+            </div>
+          `;
+          dom.modalWrapper.classList.add("show");
+          
+          document.getElementById('rr-cancel').onclick = () => dom.modalWrapper.classList.remove("show");
+          document.getElementById('rr-save').onclick = () => {
+            const hint = document.getElementById('rr-hint').value.trim();
+            dom.modalWrapper.classList.remove("show");
+            chatMessages.splice(lastCharIdx, 1);
+            renderChatHistory();
+            doReRoll(hint);
+          };
+        };
+
+        async function doReRoll(hint) {
+          isGenerating = true;
+          try {
+            const ctx = await buildContext(dom.charSelect.value, null);
+            const userName = ctx.user.name || "我";
+            const charName = ctx.char.name || "角色";
+            
+            let sys = `你是${charName}，正在和${userName}一起看关于你们的小说片段。
+            【阅读内容】${vignetteText}
+            任务：自然回应用户的探讨，保持人设。`;
+            if(settings.chatStyle === 'pure') sys += "【重要要求】：请只输出你的对白，不要包含动作描写和心理活动。";
+            if(hint) sys += `\n【用户给你的修改指导】：${hint}`;
+            
+            const apiMsgs = chatMessages.map(m => ({ role: m.role==='user'?'user':'assistant', content: m.content }));
+            const fullReply = await fetchAI(sys, apiMsgs);
+            
+            const sentences = fullReply.match(/[^。！？.!?\n]+[。！？.!?\n]*/g) || [fullReply];
+            for (let s of sentences) {
+              let text = s.trim();
+              if(!text) continue;
+              chatMessages.push({ id: crypto.randomUUID(), role: "char", name: charName, content: text });
+              renderChatHistory();
+              await new Promise(r => setTimeout(r, 600)); 
+            }
+            autoSaveCollection();
+          } catch(e) {
+            roche.ui.toast("重Roll失败");
+          } finally {
+            isGenerating = false;
+          }
+        }
 
         const doContinue = async (userReq) => {
           if (isGenerating) return;
@@ -655,7 +868,7 @@ window.RochePlugin.register({
             const append = await fetchAI(sys, []);
             vignetteText += "\n\n" + append;
             dom.vignetteContent.textContent = vignetteText;
-            chatMessages.push({ role: "char", name: "系统", content: "剧场内容已更新。" });
+            chatMessages.push({ id: crypto.randomUUID(), role: "char", name: "系统", content: "剧场内容已更新。" });
             renderChatHistory();
             autoSaveCollection();
           } catch(e) { roche.ui.toast("续写失败"); }
@@ -667,7 +880,7 @@ window.RochePlugin.register({
           if(input) doContinue(input);
         };
 
-        // [增强3]：总结摘要并记录主记忆功能
+        // [修复]：总结摘要并记录包含真实事实的主记忆
         container.querySelector("#lt-summary-btn").onclick = async () => {
           if(!dom.convSelect.value) {
             roche.ui.toast("请先在外部选择挂载一个记忆会话以支持主记忆写入。");
@@ -679,43 +892,38 @@ window.RochePlugin.register({
           roche.ui.toast("正在生成小剧场回忆摘要...");
           
           try {
-            // 将历史消息格式化
             const chatLog = chatMessages.map(m => `${m.name}: ${m.content}`).join("\n");
-            const sys = `你是一个记忆整理助手。请根据以下小剧场内容和角色的讨论，生成一段100字左右的事实陈述（第三人称视角）。
-            【小剧场正文】：${vignetteText.substring(0, 500)}...
+            const sys = `你是一个记忆整理助手。请根据以下小剧场内容和观后的聊天探讨记录，生成一段100字左右的【事实陈述（第三人称视角）】。
+            【小剧场内容摘要】：${vignetteText.substring(0, 500)}...
             【观后讨论】：\n${chatLog}
-            要求：客观记录“双方一起阅读了关于[某事]的小剧场，并表达了[某感想]”。直接输出总结内容。`;
+            要求：务必客观且具体地写出“双方面对这个小剧场剧情，分别表达了什么具体的感想或做出了什么具体的探讨”，而不是空泛地说“两人进行了探讨”。直接输出总结内容。`;
             
             const summaryText = await fetchAI(sys, [{role: "user", content: "开始总结。"}]);
             
-            // 弹出导出面板
             dom.modalContent.innerHTML = `
               <h3 style="margin:0 0 15px 0;">剧场共读纪要</h3>
-              <span style="font-size:12px; color:var(--lt-text-sub); display:block; margin-bottom:8px;">AI 提取的摘要结果（可手动修改）：</span>
-              <textarea id="sum-text" style="height: 120px;">${summaryText}</textarea>
+              <span style="font-size:12px; color:var(--lt-text-sub); display:block; margin-bottom:8px;">AI 提取的具体摘要（这部分会直接写入该角色的长期记忆 Facts，可手动修改）：</span>
+              <textarea id="sum-text" style="height: 140px; font-size:13px; line-height:1.5;">${summaryText}</textarea>
               
               <div class="roche-lt-modal-actions" style="margin-top: 15px;">
-                <button id="sum-copy" class="roche-lt-btn-outline" style="border-color:#b5929c; color:#b5929c;">复制内容 (可手动发至对话框)</button>
+                <button id="sum-copy" class="roche-lt-btn-outline" style="border-color:#b5929c; color:#b5929c;">复制内容发主界面</button>
                 <button id="sum-close" class="roche-lt-btn-outline">取消</button>
-                <button id="sum-save" class="roche-lt-btn" style="padding: 8px 20px;">写入主游戏记忆</button>
+                <button id="sum-save" class="roche-lt-btn" style="padding: 8px 20px;">真实写入主记忆</button>
               </div>
             `;
             dom.modalWrapper.classList.add("show");
             
             document.getElementById('sum-close').onclick = () => dom.modalWrapper.classList.remove("show");
             
-            // 复制到剪贴板功能
             document.getElementById('sum-copy').onclick = async () => {
                const text = document.getElementById('sum-text').value;
                try {
                  await navigator.clipboard.writeText(text);
-                 roche.ui.toast("已复制到剪贴板！请前往主对话框粘贴发送。");
-               } catch(e) {
-                 roche.ui.toast("复制失败，请手动选取复制。");
-               }
+                 roche.ui.toast("已复制！请前往主对话框粘贴发送。");
+               } catch(e) { roche.ui.toast("复制失败。"); }
             };
             
-            // 写入主记忆事实
+            // [修复] 将摘要直接作为 action 和 summaryText 写入，确保内容充实
             document.getElementById('sum-save').onclick = async () => {
               const finalSummary = document.getElementById('sum-text').value.trim();
               if(!finalSummary) return roche.ui.toast("摘要内容不能为空。");
@@ -724,7 +932,7 @@ window.RochePlugin.register({
                   conversationId: dom.convSelect.value,
                   summaryText: finalSummary,
                   who: ["我", "对方"],
-                  action: "一起阅读并探讨了小剧场",
+                  action: finalSummary, // 让真实的内容直接存在 action 里
                   when: "刚才",
                   where: "小剧场应用",
                   source: "little-theater"
@@ -785,6 +993,9 @@ window.RochePlugin.register({
               vignetteText = col.content;
               chatMessages = [...col.chatHistory];
               pendingUserMsgs = [];
+              isSelectMode = false;
+              selectedMsgIds.clear();
+              
               dom.vignetteTitle.textContent = col.title;
               dom.vignetteContent.textContent = vignetteText;
               dom.charSelect.value = col.charId; 
@@ -818,4 +1029,3 @@ window.RochePlugin.register({
     }
   ]
 });
-
