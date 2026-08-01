@@ -971,5 +971,6 @@ window.RochePlugin.register({
         container.replaceChildren();
       }
     }
-  ]});
+  ]
+    });
 
