@@ -1,7 +1,7 @@
 window.RochePlugin.register({
   id: "roche-plugin-little-theater",
   name: "小剧场 Pro Max",
-  version: "1.6.0",
+  version: "1.7.0",
   apps: [
     {
       id: "little-theater-app",
@@ -95,7 +95,9 @@ window.RochePlugin.register({
             .roche-lt-toc-select { flex: 1; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--lt-border); background: var(--lt-input-bg); color: var(--lt-text-main); outline: none; font-size: 13px; appearance: none; -webkit-appearance: none; }
             
             .roche-lt-theater-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-            .roche-lt-vignette-content { font-size: 15px; line-height: 1.8; color: var(--lt-text-main); white-space: pre-wrap; padding: 15px; background: var(--lt-panel); border-radius: 16px; }
+            
+            /* 【Bug修复】最低高度撑开内容，避免内容清空时下方聊天框弹起卡半屏 */
+            .roche-lt-vignette-content { font-size: 15px; line-height: 1.8; color: var(--lt-text-main); white-space: pre-wrap; padding: 15px; background: var(--lt-panel); border-radius: 16px; flex: 1 0 auto; min-height: 40vh; }
             
             .roche-lt-chat-box { background: var(--lt-panel); border-radius: 16px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; margin-bottom: 10px; position: relative; }
             .roche-lt-chat-actions-bar { display: flex; justify-content: space-between; padding: 10px 12px; background: var(--lt-input-bg); border-radius: 12px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
@@ -277,7 +279,7 @@ window.RochePlugin.register({
                 
                 <div style="display:flex; gap:10px; margin-bottom: 10px;">
                   <button id="lt-continue-ai-btn" class="roche-lt-btn-outline" style="flex:1;">下一章 (系统续写)</button>
-                  <button id="lt-continue-co-btn" class="roche-lt-btn-outline" style="flex:1;">下一章 (定向续写)</button>
+                  <button id="lt-continue-co-btn" class="roche-lt-btn-outline" style="flex:1;">下一章 (执笔改写)</button>
                 </div>
                 
                 <div class="roche-lt-chat-box">
@@ -624,7 +626,6 @@ window.RochePlugin.register({
             const theaterCtx = getTheaterContextForAI();
             const activeContent = theaterChapters[currentChapterIdx]?.content || "";
             
-            // 【重要】聊天系统提示词注入记忆与防油腻
             const sys = `你是${charName}，正在和${userName}一起看关于你们的小说。
             【角色人设】：${ctx.char.persona || "无"}
             ${ctx.extra}
@@ -730,14 +731,13 @@ window.RochePlugin.register({
             
             isGenerating = true; const btn = document.getElementById('cs-ai-btn'); btn.textContent = "正在生成总结...";
             try {
-              // 防爆 Token 截断，每章最多取 800 字
               const selectedTexts = cbs.map(cb => { const idx = parseInt(cb.value); return `[${theaterChapters[idx].title}]：\n${theaterChapters[idx].content.substring(0, 800)}`; }).join('\n\n');
               const currentSum = document.getElementById('cs-text').value.trim();
               const sys = `你是一个小剧场剧情记忆整理助手。你需要将新章节的内容整合进现有的剧情总结中，梳理清楚人物、剧情关系、事件发展和情感变化。
               【已有前情提要】：\n${currentSum || "无"}
               【本次需合并的章节内容】：\n${selectedTexts}
               任务：输出一份涵盖前情提要和新增章节的完整剧情总结，直接输出正文。不要输出多余解释。`;
-              const newSum = await fetchAI(sys, []);
+              const newSum = await fetchAI(sys, [{ role: "user", content: "请根据上述信息，生成剧情总结。" }]);
               document.getElementById('cs-text').value = newSum; roche.ui.toast("总结生成完毕");
             } catch(e) { roche.ui.toast("生成失败：" + e.message); } 
             finally { isGenerating = false; btn.textContent = "✨ AI 合并总结选中的章节"; }
@@ -750,7 +750,7 @@ window.RochePlugin.register({
           };
         };
 
-        // --- 9. 下一章生成与定向模式 (修复增强) ---
+        // --- 9. 下一章生成与定向模式 ---
         const doNextChapter = async (userReq) => {
           if (isGenerating || isCharTyping) return;
           isGenerating = true; roche.ui.toast("执笔新章节中...");
@@ -765,14 +765,13 @@ window.RochePlugin.register({
             const theaterCtx = getTheaterContextForAI();
             
             const sys = `你是一个优秀的小剧场作家。请接续前文，保持文风和人设一致。
-            用户(${ctx.user.name})：${ctx.user.persona || ""}
-            搭档(${ctx.char.name})：${ctx.char.persona || ""}
+            【角色人设】：${ctx.char.persona || "无"}
             ${ctx.extra}
             ${theaterCtx}
             ${strictOOCPrompt}
             任务要求：直接输出新一章的正文，绝不能输出任何解释性废话。`;
 
-            const reqContent = userReq ? `【剧情走向指令】：${userReq}` : "【指令】：请紧承上文，自然发展剧情，写出丰富生动的新一章。";
+            const reqContent = userReq ? userReq : "【指令】：请紧承上文，自然发展剧情，写出丰富生动的新一章。";
             const newText = await fetchAI(sys, [{ role: "user", content: reqContent }]);
             
             theaterChapters[currentChapterIdx].content = newText;
@@ -789,16 +788,18 @@ window.RochePlugin.register({
         
         container.querySelector("#lt-continue-ai-btn").onclick = () => doNextChapter(null);
         
-        // 全新的定向弹窗
         container.querySelector("#lt-continue-co-btn").onclick = async () => {
-          const charName = dom.charSelect.options[dom.charSelect.selectedIndex]?.text || "角色";
+          const ctx = await buildContext(dom.charSelect.value, null);
+          const charName = ctx.char.name || "角色";
+          const userName = ctx.user.name || "我";
+          
           dom.modalContent.innerHTML = `
             <h3 style="margin:0 0 15px 0;">定向下一章</h3>
             <div style="display:flex; gap:10px; margin-bottom: 15px;">
-              <button id="nx-user" class="roche-lt-btn-outline" style="flex:1;">以我为主导/视角</button>
-              <button id="nx-char" class="roche-lt-btn-outline" style="flex:1;">以${charName}为主导/视角</button>
+              <button id="nx-user" class="roche-lt-btn-outline" style="flex:1;">由我执笔</button>
+              <button id="nx-char" class="roche-lt-btn-outline" style="flex:1;">由${charName}执笔</button>
             </div>
-            <textarea id="nx-custom-text" placeholder="或者在此详细描述你期望的后续剧情走向..." style="height: 80px; font-size:13px;"></textarea>
+            <textarea id="nx-custom-text" placeholder="或者在此直接描述你期望的后续剧情走向..." style="height: 80px; font-size:13px;"></textarea>
             <div class="roche-lt-modal-actions" style="margin-top: 10px;">
               <button id="nx-cancel" class="roche-lt-btn-outline">取消</button>
               <button id="nx-custom-btn" class="roche-lt-btn" style="padding: 8px 20px;">自定义生成</button>
@@ -807,12 +808,22 @@ window.RochePlugin.register({
           dom.modalWrapper.classList.add("show");
           
           document.getElementById('nx-cancel').onclick = () => dom.modalWrapper.classList.remove("show");
-          document.getElementById('nx-user').onclick = () => { dom.modalWrapper.classList.remove("show"); doNextChapter("请以我的视角或行动为核心来主导本章的发展。"); };
-          document.getElementById('nx-char').onclick = () => { dom.modalWrapper.classList.remove("show"); doNextChapter(`请以${charName}的视角或行动为核心来主导本章的发展。`); };
+          
+          document.getElementById('nx-user').onclick = () => { 
+            dom.modalWrapper.classList.remove("show"); 
+            doNextChapter(`【执笔作者指令】：下一章由我(${userName})亲自执笔续写。请在字里行间体现出我对目前剧情的情感倾向，以我的意愿去推进后续剧情。`); 
+          };
+          
+          document.getElementById('nx-char').onclick = () => { 
+            dom.modalWrapper.classList.remove("show"); 
+            doNextChapter(`【执笔作者指令】：下一章由角色(${charName})亲自夺过笔来续写。请在字里行间强烈体现出该角色对目前剧情的真实情感（满意、不满、吐槽、愤怒等），并以完全符合该角色人设的口吻、性格和意愿，去强行扭转或发展后续剧情。可以直接带入该角色的主观情绪！`); 
+          };
+          
           document.getElementById('nx-custom-btn').onclick = () => {
             const txt = document.getElementById('nx-custom-text').value.trim();
             if(!txt) return roche.ui.toast("请输入自定义剧情");
-            dom.modalWrapper.classList.remove("show"); doNextChapter(txt);
+            dom.modalWrapper.classList.remove("show"); 
+            doNextChapter(`【剧情走向指令】：${txt}`);
           };
         };
 
@@ -828,7 +839,7 @@ window.RochePlugin.register({
             【当前章摘要】：${activeContent.substring(0, 300)}...
             【观后讨论】：\n${chatLog}
             要求：客观具体地写出“双方面对剧情，分别表达了什么具体的感想或探讨”。`;
-            const summaryText = await fetchAI(sys, [{role: "user", content: "开始总结。"}]);
+            const summaryText = await fetchAI(sys, [{role: "user", content: "请根据上述信息，开始总结。"}]);
             
             dom.modalContent.innerHTML = `
               <h3 style="margin:0 0 15px 0;">探讨回忆收录</h3>
@@ -917,4 +928,3 @@ window.RochePlugin.register({
   ]
 });
 // ==================== 第二部分代码结束 ====================
-
