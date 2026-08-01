@@ -1,8 +1,8 @@
 {
   "id": "roche-plugin-little-theater",
-  "name": "小剧场",
-  "version": "1.0.0",
-  "description": "基于莫兰迪美学的沉浸式小剧场生成与共读插件。支持自定义提示词、记忆融合、角色探讨与共同续写。",
+  "name": "小剧场 Pro Max",
+  "version": "2.0.0",
+  "description": "基于莫兰迪美学的沉浸式小剧场生成与共读插件。支持深度记忆融合、精准世界书挂载、角色探讨与主记忆回写。",
   "author": "Roche Creator",
   "entry": "https://raw.githubusercontent.com/wangchenlu008-lab/reading/main/plugin.js",
   "hash": "",
@@ -10,9 +10,11 @@
     "persona:read",
     "character:read",
     "memory:read",
+    "memory:write",
     "worldbook:read",
     "ai:chat",
     "storage",
-    "ui"
+    "ui",
+    "conversation:read"
   ]
 }
