@@ -1,8 +1,8 @@
 {
   "id": "roche-plugin-little-theater",
   "name": "小剧场",
-  "version": "1.2.0",
-  "description": "基于莫兰迪美学的沉浸式小剧场生成与共读插件。已增强：精细化记忆挂载、精确世界书选择、剧场总结与主记忆写入功能。",
+  "version": "1.3.0",
+  "description": "基于莫兰迪美学的沉浸式小剧场生成与共读插件。新增：专属世界书、精细化记忆写入、仿微信长按引用/撤回/重Roll功能。",
   "author": "Roche Creator",
   "entry": "https://raw.githubusercontent.com/wangchenlu008-lab/reading/main/plugin.js",
   "hash": "",
