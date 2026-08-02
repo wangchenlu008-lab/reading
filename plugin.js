@@ -1,7 +1,7 @@
 window.RochePlugin.register({
   id: "roche-plugin-little-theater",
   name: "小剧场 Pro Max",
-  version: "1.7.0",
+  version: "1.8.0",
   apps: [
     {
       id: "little-theater-app",
@@ -9,7 +9,7 @@ window.RochePlugin.register({
       icon: "theater_comedy",
       async mount(container, roche) {
         
-        // --- 1. 样式定义 ---
+        // --- 1. 样式定义 (全新低饱和主题与动作分色) ---
         const styleId = "style-roche-little-theater";
         if (!document.getElementById(styleId)) {
           const style = document.createElement("style");
@@ -27,8 +27,12 @@ window.RochePlugin.register({
               --lt-user-msg: #d0dce8;
               --lt-char-msg: #fff;
             }
-            .theme-pink { --lt-bg: #fff0f5; --lt-panel: #fff; --lt-text-main: #5c434a; --lt-text-sub: #b5929c; --lt-primary: #f4b8c8; --lt-primary-hover: #e3a3b4; --lt-input-bg: #ffe4eb; --lt-border: #ffe4eb; --lt-user-msg: #ffd1dc; }
-            .theme-dark { --lt-bg: #1a1a2e; --lt-panel: #16213e; --lt-text-main: #e0e0e0; --lt-text-sub: #8a9ea8; --lt-primary: #0f3460; --lt-primary-hover: #1a4b85; --lt-input-bg: #1a1a2e; --lt-border: #0f3460; --lt-user-msg: #0f3460; --lt-char-msg: #16213e; }
+            .theme-default { --lt-bg: #f5f7fa; --lt-panel: #fff; --lt-text-main: #4a5560; --lt-text-sub: #8a9ea8; --lt-primary: #b1c2d4; --lt-primary-hover: #9db2c7; --lt-input-bg: #eef2f6; --lt-border: #eef2f6; --lt-user-msg: #d0dce8; --lt-char-msg: #fff; }
+            .theme-monochrome { --lt-bg: #fcfcfc; --lt-panel: #fff; --lt-text-main: #333333; --lt-text-sub: #888888; --lt-primary: #777777; --lt-primary-hover: #555555; --lt-input-bg: #eeeeee; --lt-border: #e0e0e0; --lt-user-msg: #e0e0e0; --lt-char-msg: #fff; }
+            .theme-cream { --lt-bg: #fdfbf7; --lt-panel: #fff; --lt-text-main: #5c4f45; --lt-text-sub: #b3a69a; --lt-primary: #e6d3ba; --lt-primary-hover: #d4bfa3; --lt-input-bg: #f5efe6; --lt-border: #f0e7db; --lt-user-msg: #f0e7db; --lt-char-msg: #fff; }
+            .theme-ins { --lt-bg: #f5f2eb; --lt-panel: #fff; --lt-text-main: #5e5954; --lt-text-sub: #a8a096; --lt-primary: #cbbdb0; --lt-primary-hover: #b0a395; --lt-input-bg: #e8e3dc; --lt-border: #e3ddd5; --lt-user-msg: #e3ddd5; --lt-char-msg: #fff; }
+            .theme-parchment { --lt-bg: #eae3d5; --lt-panel: #f8f4e6; --lt-text-main: #4a3f35; --lt-text-sub: #9e8e7a; --lt-primary: #c2b297; --lt-primary-hover: #a89a80; --lt-input-bg: #dfd5c5; --lt-border: #d6cab8; --lt-user-msg: #d6cab8; --lt-char-msg: #f8f4e6; }
+            .theme-snow { --lt-bg: #2b323b; --lt-panel: #373f4a; --lt-text-main: #d5dce5; --lt-text-sub: #8896a6; --lt-primary: #6c7c8c; --lt-primary-hover: #5a6878; --lt-input-bg: #2b323b; --lt-border: #454f5c; --lt-user-msg: #4c5866; --lt-char-msg: #373f4a; }
 
             .roche-lt-container { display: flex; flex-direction: column; height: 100%; background-color: var(--lt-bg); color: var(--lt-text-main); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; position: relative; overflow: hidden; box-sizing: border-box; transition: background-color 0.3s; }
             .roche-lt-container * { box-sizing: border-box; }
@@ -62,7 +66,8 @@ window.RochePlugin.register({
             .roche-lt-prompt-scroll { display: flex; overflow-x: auto; gap: 12px; padding: 4px 0 16px 0; scroll-snap-type: x mandatory; }
             .roche-lt-prompt-scroll::-webkit-scrollbar { display: none; }
             
-            .roche-lt-prompt-item { flex: 0 0 calc(45% - 6px); min-width: 140px; background: var(--lt-panel); border-radius: 16px; padding: 16px; scroll-snap-align: start; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 2px solid transparent; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+            /* 解除了 touch-callout 限制，防止影响正常滑动 */
+            .roche-lt-prompt-item { flex: 0 0 calc(45% - 6px); min-width: 140px; background: var(--lt-panel); border-radius: 16px; padding: 16px; scroll-snap-align: start; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 2px solid transparent; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
             .roche-lt-prompt-item.active { border-color: var(--lt-primary); }
             .roche-lt-prompt-title { font-size: 15px; font-weight: 600; color: var(--lt-text-main); margin-bottom: 8px; line-height: 1.3; }
             .roche-lt-prompt-cat { font-size: 11px; color: var(--lt-text-sub); background: var(--lt-input-bg); padding: 3px 8px; border-radius: 10px; align-self: flex-start; }
@@ -96,14 +101,14 @@ window.RochePlugin.register({
             
             .roche-lt-theater-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
             
-            /* 【Bug修复】最低高度撑开内容，避免内容清空时下方聊天框弹起卡半屏 */
             .roche-lt-vignette-content { font-size: 15px; line-height: 1.8; color: var(--lt-text-main); white-space: pre-wrap; padding: 15px; background: var(--lt-panel); border-radius: 16px; flex: 1 0 auto; min-height: 40vh; }
             
             .roche-lt-chat-box { background: var(--lt-panel); border-radius: 16px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; gap: 15px; margin-bottom: 10px; position: relative; }
             .roche-lt-chat-actions-bar { display: flex; justify-content: space-between; padding: 10px 12px; background: var(--lt-input-bg); border-radius: 12px; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
             .roche-lt-chat-history { display: flex; flex-direction: column; gap: 12px; max-height: 250px; overflow-y: auto; position: relative; }
             
-            .roche-lt-msg-wrap { display: flex; align-items: flex-start; gap: 0; width: 100%; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+            /* 解除了 touch-callout 限制，保护原生滚动 */
+            .roche-lt-msg-wrap { display: flex; align-items: flex-start; gap: 0; width: 100%; }
             .roche-lt-msg-check-box { width: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: width 0.2s; margin-top: 15px; }
             .roche-lt-chat-history.select-mode .roche-lt-msg-check-box { width: 28px; }
             .roche-lt-msg-check { width: 16px; height: 16px; accent-color: var(--lt-primary); }
@@ -119,8 +124,11 @@ window.RochePlugin.register({
             .roche-lt-msg.pending .roche-lt-msg-bubble { border: 1px dashed var(--lt-primary); }
             .roche-lt-typing { font-style: italic; color: var(--lt-text-sub); animation: blink 1.5s infinite; }
 
+            /* 新增：动作描写区分样式 */
+            .roche-lt-action-text { color: var(--lt-text-sub); font-size: 0.9em; font-style: italic; display: inline-block; padding: 0 2px; }
+
             .roche-lt-quote-bubble { background: rgba(0,0,0,0.05); border-left: 3px solid var(--lt-primary); padding: 6px 10px; border-radius: 4px; font-size: 12px; color: var(--lt-text-sub); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-            .theme-dark .roche-lt-quote-bubble { background: rgba(255,255,255,0.05); }
+            .theme-dark .roche-lt-quote-bubble, .theme-snow .roche-lt-quote-bubble { background: rgba(255,255,255,0.05); }
             .roche-lt-pending-quote { background: var(--lt-panel); border: 1px solid var(--lt-primary); border-radius: 12px; padding: 8px 12px; font-size: 12px; color: var(--lt-text-sub); display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
             .roche-lt-pending-quote-close { cursor: pointer; color: #d98888; font-weight: bold; padding: 0 4px; font-size:14px; }
 
@@ -295,7 +303,7 @@ window.RochePlugin.register({
                   <div id="lt-chat-history" class="roche-lt-chat-history"></div>
                   
                   <div class="roche-lt-input-group">
-                    <div class="roche-lt-chat-hint">长按消息多选撤回/引用。按回车缓存探讨。</div>
+                    <div class="roche-lt-chat-hint">长按消息多选撤回/引用。按回车缓存多条再发。</div>
                     <div id="lt-pending-quote-box" class="roche-lt-pending-quote" style="display:none;"></div>
                     
                     <div class="roche-lt-input-row">
@@ -399,7 +407,14 @@ window.RochePlugin.register({
             dom.modalContent.innerHTML = `
               <h3 style="margin:0 0 15px 0;">剧场全局设置</h3>
               <span style="font-size:12px; color:var(--lt-text-sub);">UI 主题</span>
-              <select id="s-theme"><option value="default" ${settings.theme==='default'?'selected':''}>莫兰迪浅蓝</option><option value="pink" ${settings.theme==='pink'?'selected':''}>樱花粉</option><option value="dark" ${settings.theme==='dark'?'selected':''}>暗夜蓝 (深色)</option></select>
+              <select id="s-theme">
+                <option value="default" ${settings.theme==='default'?'selected':''}>莫兰迪浅蓝 (默认)</option>
+                <option value="monochrome" ${settings.theme==='monochrome'?'selected':''}>清新黑白灰</option>
+                <option value="cream" ${settings.theme==='cream'?'selected':''}>可爱浅黄</option>
+                <option value="ins" ${settings.theme==='ins'?'selected':''}>低饱和 Ins 风</option>
+                <option value="parchment" ${settings.theme==='parchment'?'selected':''}>羊皮纸复古</option>
+                <option value="snow" ${settings.theme==='snow'?'selected':''}>冬雪夜 (深色)</option>
+              </select>
               <span style="font-size:12px; color:var(--lt-text-sub);">角色对话模式</span>
               <select id="s-style"><option value="mixed" ${settings.chatStyle==='mixed'?'selected':''}>对话 + 动作描写</option><option value="pure" ${settings.chatStyle==='pure'?'selected':''}>纯对话</option></select>
               <div style="font-size:13px; font-weight:600; margin-top:10px; margin-bottom:8px;">1. 主世界书挂载 (多选)</div>
@@ -449,10 +464,11 @@ window.RochePlugin.register({
 
         // --- 6. AI 核心逻辑与上下文构建 (强化防OOC) ---
         const strictOOCPrompt = `
-【严格行为准则】：
-1. 必须完全遵循上方提供的【角色人设】和【世界观设定】。
+【核心强制系统指令】：
+1. 必须完全遵循上方提供的【角色人设】、【核心设定】和【专属/主世界观设定】进行角色扮演！这比任何事情都重要！
 2. 绝对禁止OOC！禁止扮演俗套的霸道总裁，禁止使用一切烂俗、油腻的语录（如“呵，女人”、“有趣”等）。
-3. 除非人设明确要求，否则绝对禁止每句话都使用反问句或挑衅的口吻。请保持真实、自然、符合角色原始性格的表达！`;
+3. 除非人设明确要求，否则绝对禁止每句话都使用反问句或挑衅的口吻。请保持真实、自然、符合角色原始性格的表达！
+4. 你的回应必须与前情提要和近期对话保持逻辑连贯。`;
 
         async function fetchAI(sysPrompt, msgs = []) {
           const res = await roche.ai.chat({ messages: [{ role: "system", content: sysPrompt }, ...msgs], temperature: 0.75 });
@@ -523,7 +539,7 @@ window.RochePlugin.register({
           finally { isGenerating = false; dom.generateBtn.textContent = "执笔生成"; }
         };
 
-        // --- 7. 聊天、气泡引用、防油腻重Roll ---
+        // --- 7. 聊天、气泡引用、动作渲染 ---
         function quitSelectMode() {
           isSelectMode = false; selectedMsgIds.clear();
           dom.chatHistory.classList.remove("select-mode");
@@ -537,6 +553,13 @@ window.RochePlugin.register({
             box.innerHTML = `<div style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><span style="color:var(--lt-primary);font-weight:bold;">引用：</span>${pendingQuote.text}</div><div class="roche-lt-pending-quote-close" id="lt-pq-close">✖</div>`;
             box.querySelector("#lt-pq-close").onclick = () => { pendingQuote = null; renderPendingQuoteUI(); };
           } else { box.style.display = "none"; box.innerHTML = ""; }
+        }
+
+        function formatContent(text) {
+          if (!text) return "";
+          let safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          safe = safe.replace(/([（\(【\*].*?[）\)】\*])/g, '<span class="roche-lt-action-text">$1</span>');
+          return safe;
         }
 
         dom.chatHistory.addEventListener('change', (e) => {
@@ -568,6 +591,7 @@ window.RochePlugin.register({
           
           chatMessages.forEach(m => {
             const checked = selectedMsgIds.has(m.id) ? "checked" : "";
+            const displayContent = formatContent(m.content);
             html += `
               <div class="roche-lt-msg-wrap" data-id="${m.id}">
                 <div class="roche-lt-msg-check-box"><input type="checkbox" class="roche-lt-msg-check" ${checked}></div>
@@ -575,14 +599,15 @@ window.RochePlugin.register({
                   <div class="roche-lt-msg-name">${m.name}</div>
                   <div class="roche-lt-msg-bubble">
                     ${m.quote ? `<div class="roche-lt-quote-bubble">${m.quote.text}</div>` : ''}
-                    ${m.content}
+                    ${displayContent}
                   </div>
                 </div>
               </div>`;
           });
           
           pendingUserMsgs.forEach(text => {
-             html += `<div class="roche-lt-msg-wrap"><div class="roche-lt-msg-check-box"></div><div class="roche-lt-msg user pending"><div class="roche-lt-msg-name">我 (未发送)</div><div class="roche-lt-msg-bubble">${pendingQuote ? `<div class="roche-lt-quote-bubble">${pendingQuote.text}</div>` : ''}${text}</div></div></div>`;
+             const displayContent = formatContent(text);
+             html += `<div class="roche-lt-msg-wrap"><div class="roche-lt-msg-check-box"></div><div class="roche-lt-msg user pending"><div class="roche-lt-msg-name">我 (未发送)</div><div class="roche-lt-msg-bubble">${pendingQuote ? `<div class="roche-lt-quote-bubble">${pendingQuote.text}</div>` : ''}${displayContent}</div></div></div>`;
           });
 
           if (isCharTyping) {
@@ -608,17 +633,20 @@ window.RochePlugin.register({
 
         dom.chatInput.onkeypress = (e) => { if (e.key === "Enter") { const text = dom.chatInput.value.trim(); if(text) { pendingUserMsgs.push(text); dom.chatInput.value = ""; renderChatHistory(); } } };
 
+        // [修复] 多输入不合并：为缓存里的每条消息生成独立的气泡
         container.querySelector("#lt-chat-send-btn").onclick = async () => {
           const directText = dom.chatInput.value.trim(); if(directText) { pendingUserMsgs.push(directText); dom.chatInput.value = ""; }
           if(pendingUserMsgs.length === 0 || isCharTyping || isGenerating) return;
           
-          const combinedMsg = pendingUserMsgs.join(" ");
           const ctx = await buildContext(dom.charSelect.value, dom.convSelect.value);
           const userName = ctx.user.name || "我"; const charName = ctx.char.name || "角色";
           
-          const msgObj = { id: crypto.randomUUID(), role: "user", name: userName, content: combinedMsg };
-          if(pendingQuote) { msgObj.quote = pendingQuote; pendingQuote = null; renderPendingQuoteUI(); }
-          chatMessages.push(msgObj);
+          let isFirst = true;
+          for (let text of pendingUserMsgs) {
+            const msgObj = { id: crypto.randomUUID(), role: "user", name: userName, content: text };
+            if (isFirst && pendingQuote) { msgObj.quote = pendingQuote; pendingQuote = null; renderPendingQuoteUI(); isFirst = false; }
+            chatMessages.push(msgObj);
+          }
           pendingUserMsgs = []; isCharTyping = true; renderChatHistory();
           
           try {
@@ -645,7 +673,7 @@ window.RochePlugin.register({
               renderChatHistory(); await new Promise(r => setTimeout(r, 600)); 
             }
             autoSaveCollection(); 
-          } catch(e) { isCharTyping = false; roche.ui.toast("回复失败"); chatMessages.pop(); renderChatHistory(); }
+          } catch(e) { isCharTyping = false; roche.ui.toast("回复失败"); renderChatHistory(); }
         };
 
         container.querySelector("#lt-chat-reroll-btn").onclick = () => {
@@ -704,7 +732,7 @@ window.RochePlugin.register({
           } catch(e) { isCharTyping = false; renderChatHistory(); roche.ui.toast("重Roll失败"); }
         }
 
-        // --- 8. 剧情章节总结系统 (防报错) ---
+        // --- 8. 剧情章节总结系统 (彻底解决 AT LEAST ONE CONTENTS 报错) ---
         container.querySelector("#lt-chapter-summary-btn").onclick = () => {
           dom.modalContent.innerHTML = `
             <h3 style="margin:0 0 15px 0;">剧情记忆总结 (防爆炸)</h3>
@@ -737,7 +765,9 @@ window.RochePlugin.register({
               【已有前情提要】：\n${currentSum || "无"}
               【本次需合并的章节内容】：\n${selectedTexts}
               任务：输出一份涵盖前情提要和新增章节的完整剧情总结，直接输出正文。不要输出多余解释。`;
-              const newSum = await fetchAI(sys, [{ role: "user", content: "请根据上述信息，生成剧情总结。" }]);
+              
+              // 必须传入 user 角色信息，防止 AI 报错 AT LEAST ONE CONTENTS FIELD IS REQUIRED
+              const newSum = await fetchAI(sys, [{ role: "user", content: "请根据上述信息，合并生成最新的剧情总结。" }]);
               document.getElementById('cs-text').value = newSum; roche.ui.toast("总结生成完毕");
             } catch(e) { roche.ui.toast("生成失败：" + e.message); } 
             finally { isGenerating = false; btn.textContent = "✨ AI 合并总结选中的章节"; }
@@ -750,7 +780,7 @@ window.RochePlugin.register({
           };
         };
 
-        // --- 9. 下一章生成与定向模式 ---
+        // --- 9. 下一章生成与主观执笔续写 ---
         const doNextChapter = async (userReq) => {
           if (isGenerating || isCharTyping) return;
           isGenerating = true; roche.ui.toast("执笔新章节中...");
@@ -790,8 +820,7 @@ window.RochePlugin.register({
         
         container.querySelector("#lt-continue-co-btn").onclick = async () => {
           const ctx = await buildContext(dom.charSelect.value, null);
-          const charName = ctx.char.name || "角色";
-          const userName = ctx.user.name || "我";
+          const charName = ctx.char.name || "角色"; const userName = ctx.user.name || "我";
           
           dom.modalContent.innerHTML = `
             <h3 style="margin:0 0 15px 0;">定向下一章</h3>
@@ -806,24 +835,20 @@ window.RochePlugin.register({
             </div>
           `;
           dom.modalWrapper.classList.add("show");
-          
           document.getElementById('nx-cancel').onclick = () => dom.modalWrapper.classList.remove("show");
           
           document.getElementById('nx-user').onclick = () => { 
             dom.modalWrapper.classList.remove("show"); 
             doNextChapter(`【执笔作者指令】：下一章由我(${userName})亲自执笔续写。请在字里行间体现出我对目前剧情的情感倾向，以我的意愿去推进后续剧情。`); 
           };
-          
           document.getElementById('nx-char').onclick = () => { 
             dom.modalWrapper.classList.remove("show"); 
             doNextChapter(`【执笔作者指令】：下一章由角色(${charName})亲自夺过笔来续写。请在字里行间强烈体现出该角色对目前剧情的真实情感（满意、不满、吐槽、愤怒等），并以完全符合该角色人设的口吻、性格和意愿，去强行扭转或发展后续剧情。可以直接带入该角色的主观情绪！`); 
           };
-          
           document.getElementById('nx-custom-btn').onclick = () => {
             const txt = document.getElementById('nx-custom-text').value.trim();
             if(!txt) return roche.ui.toast("请输入自定义剧情");
-            dom.modalWrapper.classList.remove("show"); 
-            doNextChapter(`【剧情走向指令】：${txt}`);
+            dom.modalWrapper.classList.remove("show"); doNextChapter(`【剧情走向指令】：${txt}`);
           };
         };
 
@@ -859,14 +884,14 @@ window.RochePlugin.register({
           } catch (e) { roche.ui.toast("生成失败：" + e.message); } finally { isGenerating = false; }
         };
 
-        // --- 11. 收藏馆控制 ---
+        // --- 11. 收藏馆控制 (引入 Deep Clone 解决引用丢失问题) ---
         async function autoSaveCollection() {
           if(!currentCollectionId) return; 
           const col = savedCollections.find(c => c.id === currentCollectionId);
           if(col) {
             col.chapters = JSON.parse(JSON.stringify(theaterChapters));
             col.chapterSummary = chapterSummary;
-            col.chatHistory = [...chatMessages];
+            col.chatHistory = JSON.parse(JSON.stringify(chatMessages));
             await roche.storage.set("collections", savedCollections);
           }
         }
@@ -876,7 +901,7 @@ window.RochePlugin.register({
           currentCollectionId = crypto.randomUUID();
           savedCollections.unshift({
             id: currentCollectionId, title: activePrompt?.title || "未命名剧场", charId: dom.charSelect.value,
-            chapters: JSON.parse(JSON.stringify(theaterChapters)), chapterSummary: chapterSummary, chatHistory: [...chatMessages], date: new Date().toLocaleString()
+            chapters: JSON.parse(JSON.stringify(theaterChapters)), chapterSummary: chapterSummary, chatHistory: JSON.parse(JSON.stringify(chatMessages)), date: new Date().toLocaleString()
           });
           await roche.storage.set("collections", savedCollections); roche.ui.toast("已保存至收藏馆");
         };
@@ -896,7 +921,7 @@ window.RochePlugin.register({
               if (col.chapters && col.chapters.length > 0) { theaterChapters = JSON.parse(JSON.stringify(col.chapters)); } 
               else { theaterChapters = [{ title: "第1章", content: col.content || "", isSummarized: false }]; }
               chapterSummary = col.chapterSummary || "";
-              currentChapterIdx = 0; chatMessages = [...col.chatHistory]; pendingUserMsgs = []; pendingQuote = null;
+              currentChapterIdx = 0; chatMessages = JSON.parse(JSON.stringify(col.chatHistory || [])); pendingUserMsgs = []; pendingQuote = null;
               
               quitSelectMode(); renderPendingQuoteUI();
               dom.vignetteTitle.textContent = col.title; dom.charSelect.value = col.charId; 
@@ -928,3 +953,4 @@ window.RochePlugin.register({
   ]
 });
 // ==================== 第二部分代码结束 ====================
+
